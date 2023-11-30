@@ -55,16 +55,7 @@ def minimize_energy(image, initial_l, lambda_reg):
 
 
 def calculate_weights_u(image):
-    # Placeholder for the actual implementation
-    # This should calculate the weights u_ij based on the paper's methodology
     pass
 
 def calculate_weights_v(image):
     pass
-
-
-image = np.random.rand(100, 100)  # Replace with actual image data
-initial_l = np.zeros_like(image)  # Initial estimate of illumination
-lambda_reg = 1.0  # Regularization parameter, to be tuned
-
-optimal_l = minimize_energy(image, initial_l, lambda_reg)
