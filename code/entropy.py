@@ -1,7 +1,7 @@
 import numpy as np
 from scipy.optimize import least_squares
 
-import numpy as np
+import matplotlib.pyplot as plt
 
 def calculate_pixel_differences(image):
     # Assuming image is grayscale
@@ -58,4 +58,29 @@ def calculate_weights_u(image):
     pass
 
 def calculate_weights_v(image):
+    pass
+
+rgb2gray_weightr = 0.2125 
+rgb2gray_weightg = 0.7154
+rgb2gray_weightb = 0.0721
+
+def find_luminance_chrominance(image):
+    luminance = np.average(image, axis=2, weights=[rgb2gray_weightr, \
+                                                   rgb2gray_weightg, \
+                                                   rgb2gray_weightb])
+    chrom_r, chrom_g, chrom_b = image[:, :, 0] / luminance, \
+                                image[:, :, 1] / luminance, \
+                                image[:, :, 2] / luminance
+    chrominance = np.dstack([np.clip(chrom_r, 0, 255), \
+                             np.clip(chrom_g, 0, 255), \
+                             np.clip(chrom_b, 0, 255)])
+    plt.imshow(luminance, cmap="gray")
+    # # plt.imshow(chrominance)
+    plt.show()
+    return np.clip(luminance, 0, 255), np.clip(chrominance, 0, 255)
+
+def calculate_illumination(image):
+    # SEPARATE OUT LUMINANCE AND CHROMINANCE
+    # REALLY CLOSE TO ILLUMINATION AND REFLECTANCE
+    # INTRINSIC IMAGE DECOMP
     pass
