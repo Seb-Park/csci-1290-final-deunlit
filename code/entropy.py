@@ -3,36 +3,7 @@ from scipy.optimize import least_squares
 from utils import gaussian_kernel
 import matplotlib.pyplot as plt
 
-EPSILON = 1e-6 # to avoid log 0
-
-def mean_neighbor_log_intensity_differences(image):
-    '''
-    For each pixel in the image,
-    calculates the mean of log intensity differences between the pixel and its neighbors.
-    Should be returning a matrix of shape (height, width). (Same as image)
-    Assuming image is grayscale
-    '''
-    h, w = image.shape[0], image.shape[1]
-    mean_log_intensity_diffs = np.zeros_like(image)
-    log_image = np.log(image + EPSILON)  # avoid log(0)
-
-    for r in range(h):
-        for c in range(w):
-            # neighborhood with boundary considerations
-            top = max(r-1, 0)
-            bottom = min(r+1, h-1)
-            left = max(c-1, 0)
-            right = min(c+1, w-1)
-            neighborhood = [
-                log_image[top, c], 
-                log_image[bottom, c], 
-                log_image[r, left],
-                log_image[r, right]
-            ]
-            mean_log_intensity_diffs[r, c] = np.abs(
-                log_image[r, c] - np.mean(neighborhood))
-
-    return mean_log_intensity_diffs
+EPSILON = 1e-6  # to avoid log 0
 
 
 def energy_function(curr_L, image, lambda_reg, phi_l, phi_p, omega_t):
@@ -61,7 +32,8 @@ def energy_function(curr_L, image, lambda_reg, phi_l, phi_p, omega_t):
             left = max(c-1, 0)
             right = min(c+1, w-1)
 
-            log_L_i = np.log(curr_L[r, c] + EPSILON) # log illumination of current pixel
+            # log illumination of current pixel
+            log_L_i = np.log(curr_L[r, c] + EPSILON)
             l_ijs = [
                 np.abs(log_L_i - np.log(curr_L[top, c] + EPSILON)),
                 np.abs(log_L_i - np.log(curr_L[bottom, c] + EPSILON)),
@@ -98,6 +70,36 @@ def minimize_energy(image, initial_l, lambda_reg):
     :return: Optimal illumination estimate.
     """
     pass
+
+
+def mean_neighbor_log_intensity_differences(image):
+    '''
+    For each pixel in the image,
+    calculates the mean of log intensity differences between the pixel and its neighbors.
+    Should be returning a matrix of shape (height, width). (Same as image)
+    Assuming image is grayscale
+    '''
+    h, w = image.shape[0], image.shape[1]
+    mean_log_intensity_diffs = np.zeros_like(image)
+    log_image = np.log(image + EPSILON)  # avoid log(0)
+
+    for r in range(h):
+        for c in range(w):
+            # neighborhood with boundary considerations
+            top = max(r-1, 0)
+            bottom = min(r+1, h-1)
+            left = max(c-1, 0)
+            right = min(c+1, w-1)
+            neighborhood = [
+                log_image[top, c],
+                log_image[bottom, c],
+                log_image[r, left],
+                log_image[r, right]
+            ]
+            mean_log_intensity_diffs[r, c] = np.abs(
+                log_image[r, c] - np.mean(neighborhood))
+
+    return mean_log_intensity_diffs
 
 
 def calculate_weights_u(image, phi_l, phi_p):
