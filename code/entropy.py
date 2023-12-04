@@ -1,5 +1,6 @@
 import numpy as np
 from scipy.optimize import least_squares
+from utils import gaussian_kernel
 
 import matplotlib.pyplot as plt
 
