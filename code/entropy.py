@@ -13,10 +13,10 @@ def energy_function(curr_L, image, lambda_reg, phi_l, phi_p, omega_t):
     :param image: Input image, (h, w)
     :param lambda_reg: Regularization parameter, (1,)
     :param phi_l, phi_p, omega_t: smoothing matrices to calculate weights u and v
-    :return: Energy value for the current illumination estimate.
+    :return: An optimized illumination estimate for each pixel in the image, (h, w)
     """
     h, w = image.shape[0], image.shape[1]
-    # u and v should be sparse matrix of (h*w, h*w)
+    # u and v should be sparse matrix of shape (h*w, h*w)
     u = calculate_weights_u(image, phi_l, phi_p)
     v = calculate_weights_v(image, omega_t)
     eta_bar = mean_neighbor_log_intensity_differences(image)
@@ -90,20 +90,21 @@ def mean_neighbor_log_intensity_differences(image):
             bottom = min(r+1, h-1)
             left = max(c-1, 0)
             right = min(c+1, w-1)
-            neighborhood = [
+            neighborhood_log_intensity = [
                 log_image[top, c],
                 log_image[bottom, c],
                 log_image[r, left],
                 log_image[r, right]
             ]
             mean_log_intensity_diffs[r, c] = np.abs(
-                log_image[r, c] - np.mean(neighborhood))
+                log_image[r, c] - np.mean(neighborhood_log_intensity))
 
     return mean_log_intensity_diffs
 
 
 def calculate_weights_u(image, phi_l, phi_p):
-    pass
+    h, w = image.shape[0], image.shape[1]
+    gaussian_kernel()
 
 
 def calculate_weights_v(image, omega_t):
