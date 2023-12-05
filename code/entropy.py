@@ -4,6 +4,7 @@ from utils import gaussian_kernel
 import matplotlib.pyplot as plt
 from scipy import sparse
 
+
 EPSILON = 1e-6  # to avoid log 0
 
 
@@ -70,8 +71,15 @@ def minimize_energy(image, initial_l, lambda_reg):
     :param lambda_reg: Regularization parameter.
     :return: Optimal illumination estimate.
     """
-    pass
+    u = calculate_weights_u(image, phi_l, phi_p)
+    v = calculate_weights_v(image, omega_t, omega_p)
+    num_pixels = image.shape[0] * image.shape[1]
+    eta_bar = mean_neighbor_log_intensity_differences(image).reshape((num_pixels, 1))
+    A = u + (lambda_reg * v)
+    b = lambda_reg * v * eta_bar
 
+    x, exit_code = sparse.linalg.cg(A, b, maxiter=5)
+    return x
 
 def mean_neighbor_log_intensity_differences(image):
     '''
