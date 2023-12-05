@@ -2,6 +2,7 @@ import numpy as np
 from scipy.optimize import least_squares
 from utils import gaussian_kernel
 import matplotlib.pyplot as plt
+from scipy import sparse
 
 EPSILON = 1e-6  # to avoid log 0
 
@@ -103,7 +104,38 @@ def mean_neighbor_log_intensity_differences(image):
 
 
 def calculate_weights_u(image, phi_l, phi_p):
-    pass
+    # necessary info for sparse matrix
+    row = []
+    col = []
+    data = []
+
+    illumination = calculate_illumination(image)
+
+    # loop through each pixel
+    num_pixels = image.shape[0] * image.shape[1]
+    for i in range(num_pixels):
+        curr_row = i // image.shape[1]
+        curr_col = i % image.shape[1]
+
+        neighbors = [(curr_row - 1, curr_col), (curr_row + 1, curr_col), 
+                     (curr_row, curr_col - 1), (curr_row, curr_col + 1)]
+        for dir in neighbors: 
+            if dir[0] < 0 or dir[0] >= image.shape[0] or dir[1] < 0 or dir[1] >= image.shape[1]:
+                continue
+
+            row.append(i)
+            col.append(dir[0] * image.shape[1] + dir[1])
+            illum_gaussian = gaussian_kernel(
+                np.array([illumination[curr_row][curr_col]]), 
+                np.array([illumination[dir[0]][dir[1]]]), 
+                phi_l) 
+            pixel_gaussian = gaussian_kernel(
+                np.array([curr_row, curr_col]), 
+                np.array([dir[0], dir[1]]), phi_p)
+            data.append(illum_gaussian * pixel_gaussian)
+
+    return sparse.csr_matrix((data, (row, col)), shape=(num_pixels, num_pixels))
+
 
 
 def calculate_weights_v(image, omega_t):
@@ -135,4 +167,5 @@ def calculate_illumination(image):
     # SEPARATE OUT LUMINANCE AND CHROMINANCE
     # REALLY CLOSE TO ILLUMINATION AND REFLECTANCE
     # INTRINSIC IMAGE DECOMP
-    pass
+    luminance, _ = find_luminance_chrominance(image)
+    return luminance
