@@ -138,8 +138,43 @@ def calculate_weights_u(image, phi_l, phi_p):
 
 
 
-def calculate_weights_v(image, omega_t):
-    pass
+def calculate_weights_v(image, omega_t, omega_p):
+    # necessary info for sparse matrix
+    row = []
+    col = []
+    data = []
+
+    reflectance = calculate_reflectance(image)
+
+    # loop through each pixel
+    num_pixels = image.shape[0] * image.shape[1]
+    for i in range(num_pixels):
+        curr_row = i // image.shape[1]
+        curr_col = i % image.shape[1]
+
+        neighbors = [(curr_row - 1, curr_col), (curr_row + 1, curr_col), 
+                     (curr_row, curr_col - 1), (curr_row, curr_col + 1)]
+        for dir in neighbors: 
+            if dir[0] < 0 or dir[0] >= image.shape[0] or dir[1] < 0 or dir[1] >= image.shape[1]:
+                continue
+
+            row.append(i)
+            col.append(dir[0] * image.shape[1] + dir[1])
+            refl_gaussian = gaussian_kernel(
+                np.array([reflectance[curr_row][curr_col]]), 
+                np.array([reflectance[dir[0]][dir[1]]]), 
+                2 * omega_t) 
+            pixel_gaussian = gaussian_kernel(
+                np.array([curr_row, curr_col]), 
+                np.array([dir[0], dir[1]]), 
+                omega_p)
+            eta_gaussian = gaussian_kernel(
+                ..., 
+                ..., 
+                2 * omega_t)
+            data.append(refl_gaussian * pixel_gaussian * eta_gaussian)
+
+    return sparse.csr_matrix((data, (row, col)), shape=(num_pixels, num_pixels))
 
 
 rgb2gray_weightr = 0.2125
@@ -169,3 +204,10 @@ def calculate_illumination(image):
     # INTRINSIC IMAGE DECOMP
     luminance, _ = find_luminance_chrominance(image)
     return luminance
+
+def calculate_reflectance(image):
+    # SEPARATE OUT LUMINANCE AND CHROMINANCE
+    # REALLY CLOSE TO ILLUMINATION AND REFLECTANCE
+    # INTRINSIC IMAGE DECOMP
+    _, reflectance = find_luminance_chrominance(image)
+    return reflectance
