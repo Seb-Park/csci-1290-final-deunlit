@@ -5,11 +5,15 @@ from entropy import minimize_energy
 
 
 def main():
-    image = cv2.imread('path_to_image.jpg')
+    image = cv2.imread('test_shadow.jpg')
+    # image = 0.2989 * image[:,:,2] + 0.5870 * image[:,:,1] + 0.1140 * image[:,:,0] 
+    # image_gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY) 
     initial_l = np.zeros_like(image)
     lambda_reg = 1.0 
 
     optimal_l = minimize_energy(image, initial_l, lambda_reg)
+    print(np.max(optimal_l))
+    print(np.min(optimal_l))
 
 
 

@@ -3,6 +3,7 @@ from scipy.optimize import least_squares
 from utils import gaussian_kernel
 import matplotlib.pyplot as plt
 from scipy import sparse
+import cv2
 
 
 EPSILON = 1e-6  # to avoid log 0
@@ -17,11 +18,12 @@ def energy_function(curr_L, image, lambda_reg, phi_l, phi_p, omega_t):
     :param phi_l, phi_p, omega_t: smoothing matrices to calculate weights u and v
     :return: Energy value for the current illumination estimate.
     """
+    image_gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY) 
     h, w = image.shape[0], image.shape[1]
     # u and v should be sparse matrix of (h*w, h*w)
     u = calculate_weights_u(image, phi_l, phi_p)
     v = calculate_weights_v(image, omega_t)
-    eta_bar = mean_neighbor_log_intensity_differences(image)
+    eta_bar = mean_neighbor_log_intensity_differences(image_gray)
 
     L_star = np.zeros((h, w))
 
@@ -71,14 +73,22 @@ def minimize_energy(image, initial_l, lambda_reg):
     :param lambda_reg: Regularization parameter.
     :return: Optimal illumination estimate.
     """
-    u = calculate_weights_u(image, phi_l, phi_p)
-    v = calculate_weights_v(image, omega_t, omega_p)
+    u = calculate_weights_u(image, np.array([0.2]), np.array([0.3]))
+    v = calculate_weights_v(image, np.array([0.7]), np.array([0.8]))
+    # u = calculate_weights_u(image, phi_l, phi_p)
+    # v = calculate_weights_v(image, omega_t, omega_p)
+    image_gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY) 
     num_pixels = image.shape[0] * image.shape[1]
-    eta_bar = mean_neighbor_log_intensity_differences(image).reshape((num_pixels, 1))
+    print("SHAPES")
+    print(image_gray.shape)
+    print(mean_neighbor_log_intensity_differences(image_gray).shape)
+    eta_bar = mean_neighbor_log_intensity_differences(image_gray).reshape((num_pixels, 1))
     A = u + (lambda_reg * v)
     b = lambda_reg * v * eta_bar
-
-    x, exit_code = sparse.linalg.cg(A, b, maxiter=5)
+    print("STUFF")
+    print(v)
+    print(eta_bar)
+    x, exit_code = sparse.linalg.cg(A, b, maxiter=10)
     return x
 
 def mean_neighbor_log_intensity_differences(image):
@@ -141,8 +151,7 @@ def calculate_weights_u(image, phi_l, phi_p):
                 np.array([curr_row, curr_col]), 
                 np.array([dir[0], dir[1]]), phi_p)
             data.append(illum_gaussian * pixel_gaussian)
-
-    return sparse.csr_matrix((data, (row, col)), shape=(num_pixels, num_pixels))
+    return sparse.csr_matrix((np.asarray(data)[:,0], (np.asarray(row), np.asarray(col))), shape=(num_pixels, num_pixels))
 
 
 
@@ -206,8 +215,7 @@ def calculate_weights_v(image, omega_t, omega_p):
                 eta_i - eta_i_bar, 
                 2 * omega_t)
             data.append(refl_gaussian * pixel_gaussian * eta_gaussian)
-
-    return sparse.csr_matrix((data, (row, col)), shape=(num_pixels, num_pixels))
+    return sparse.csr_matrix((np.asarray(data)[:,0][:,0], (np.asarray(row), np.asarray(col))), shape=(num_pixels, num_pixels))
 
 
 rgb2gray_weightr = 0.2125
