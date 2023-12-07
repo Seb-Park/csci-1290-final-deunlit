@@ -73,21 +73,17 @@ def minimize_energy(image, initial_l, lambda_reg):
     :param lambda_reg: Regularization parameter.
     :return: Optimal illumination estimate.
     """
-    u = calculate_weights_u(image, np.array([0.2]), np.array([0.3]))
-    v = calculate_weights_v(image, np.array([0.7]), np.array([0.8]))
+    # u = calculate_weights_u(image, np.array([0.01]), np.array([0.02]))
+    # v = calculate_weights_v(image, np.array([0.6]), np.array([0.7]))
+    u = calculate_weights_u(image, np.array([0.02]), np.array([0.02]))
+    v = calculate_weights_v(image, np.array([0.5]), np.array([0.6]))
     # u = calculate_weights_u(image, phi_l, phi_p)
     # v = calculate_weights_v(image, omega_t, omega_p)
     image_gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY) 
     num_pixels = image.shape[0] * image.shape[1]
-    print("SHAPES")
-    print(image_gray.shape)
-    print(mean_neighbor_log_intensity_differences(image_gray).shape)
     eta_bar = mean_neighbor_log_intensity_differences(image_gray).reshape((num_pixels, 1))
     A = u + (lambda_reg * v)
     b = lambda_reg * v * eta_bar
-    print("STUFF")
-    print(v)
-    print(eta_bar)
     x, exit_code = sparse.linalg.cg(A, b, maxiter=10)
     return x
 
@@ -99,7 +95,7 @@ def mean_neighbor_log_intensity_differences(image):
     Assuming image is grayscale
     '''
     h, w = image.shape[0], image.shape[1]
-    mean_log_intensity_diffs = np.zeros_like(image)
+    mean_log_intensity_diffs = np.zeros_like(image).astype(np.float32)
     log_image = np.log(image + EPSILON)  # avoid log(0)
 
     for r in range(h):
@@ -116,7 +112,7 @@ def mean_neighbor_log_intensity_differences(image):
                 log_image[r, right]
             ]
             mean_log_intensity_diffs[r, c] = np.abs(
-                log_image[r, c] - np.mean(neighborhood))
+                (log_image[r, c] - np.mean(neighborhood)))
 
     return mean_log_intensity_diffs
 
@@ -227,9 +223,9 @@ def find_luminance_chrominance(image):
     luminance = np.average(image, axis=2, weights=[rgb2gray_weightr,
                                                    rgb2gray_weightg,
                                                    rgb2gray_weightb])
-    chrom_r, chrom_g, chrom_b = image[:, :, 0] / luminance, \
-        image[:, :, 1] / luminance, \
-        image[:, :, 2] / luminance
+    chrom_r, chrom_g, chrom_b = image[:, :, 0] / (luminance+EPSILON), \
+        image[:, :, 1] / (luminance+EPSILON), \
+        image[:, :, 2] / (luminance+EPSILON)
     chrominance = np.dstack([np.clip(chrom_r, 0, 255),
                              np.clip(chrom_g, 0, 255),
                              np.clip(chrom_b, 0, 255)])
