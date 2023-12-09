@@ -75,8 +75,8 @@ def minimize_energy(image, initial_l, lambda_reg):
     """
     # u = calculate_weights_u(image, np.array([0.01]), np.array([0.02]))
     # v = calculate_weights_v(image, np.array([0.6]), np.array([0.7]))
-    u = calculate_weights_u(image, np.array([0.02]), np.array([0.02]))
-    v = calculate_weights_v(image, np.array([0.5]), np.array([0.6]))
+    u = calculate_weights_u(image, np.array([0.2]), np.array([0.2]))
+    v = calculate_weights_v(image, np.array([0.4]), np.array([0.5]))
     # u = calculate_weights_u(image, phi_l, phi_p)
     # v = calculate_weights_v(image, omega_t, omega_p)
     image_gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY) 
@@ -157,7 +157,7 @@ def calculate_weights_v(image, omega_t, omega_p):
     row = []
     col = []
     data = []
-    log_image = np.log(image + EPSILON)
+    log_image = np.log(cv2.cvtColor(image, cv2.COLOR_BGR2GRAY) + EPSILON)
     reflectance = calculate_reflectance(image)
 
     # loop through each pixel
@@ -229,9 +229,9 @@ def find_luminance_chrominance(image):
     chrominance = np.dstack([np.clip(chrom_r, 0, 255),
                              np.clip(chrom_g, 0, 255),
                              np.clip(chrom_b, 0, 255)])
-    plt.imshow(luminance, cmap="gray")
+    # plt.imshow(luminance, cmap="gray")
     # # plt.imshow(chrominance)
-    plt.show()
+    # plt.show()
     return np.clip(luminance, 0, 255), np.clip(chrominance, 0, 255)
 
 
