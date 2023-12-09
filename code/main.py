@@ -2,10 +2,13 @@ import numpy as np
 import cv2
 import matplotlib.pyplot as plt
 from entropy import minimize_energy
-EPSILON = 1e-6
+from skimage import img_as_float32
+
+EPSILON = 1e-6 
 
 def main():
     image = cv2.imread('IMG_1167.jpg')
+    # image = cv2.imread('test_shadow.jpg')
     image_gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY) 
     image = image_gray
     cv2.imshow("i0", image_gray)
@@ -23,6 +26,11 @@ def main():
     optimal_img = np.multiply(np.exp(optimal_l), np.exp(optimal_r)).astype(np.uint8)
     cv2.imshow("i", optimal_img)
     cv2.waitKey(0)
+    print("OPTIMAL")
+    print(np.min(np.exp(optimal_l)))
+    print(np.max(np.exp(optimal_l)))
+    print(np.min(np.exp(optimal_r)))
+    print(np.max(np.exp(optimal_r)))
 
 
 
