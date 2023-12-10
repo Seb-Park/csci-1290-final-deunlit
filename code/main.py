@@ -14,7 +14,7 @@ def main():
     mask = cv2.imread('../data/mask_1171.png')
     mask_gray = cv2.cvtColor(mask, cv2.COLOR_BGR2GRAY)
 
-    initial_l = np.zeros((image.shape[0]*image.shape[1], 1))
+    initial_l = np.ones((image.shape[0]*image.shape[1], 1)) # in log domain
     phi_l = np.array([0.2]) 
     phi_p = np.array([0.2])
     omega_t =  np.array([0.4])

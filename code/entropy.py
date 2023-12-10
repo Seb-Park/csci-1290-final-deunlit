@@ -1,8 +1,8 @@
 import numpy as np
-from utils import gaussian_kernel
+from utils import gaussian_kernel, is_symmetric_and_positive_definite_sparse
 import matplotlib.pyplot as plt
-from scipy import sparse
 import cv2
+from scipy import sparse
 from skimage.filters import gaussian
 
 
@@ -65,13 +65,10 @@ EPSILON = 1e-6  # to avoid log 0
 #     return L_star
 
 
-def minimize_energy(image, mask, initial_l, phi_l, phi_p, omega_t, omega_p, lambda_reg=1.0, num_iter=10, maxiter=20):
+def minimize_energy(image, mask, initial_l, phi_l, phi_p, omega_t, omega_p, lambda_reg=1.0, num_iter=10, maxiter=100):
     """
     Minimize the energy function using iterative optimization.
-    :param image: Input image.
-    :param initial_l: Initial estimate of illumination.
-    :param lambda_reg: Regularization parameter.
-    :return: Optimal illumination estimate.
+    :return: Optimal illumination estimate (IN LOG DOMAIN!!!!!!!!!!)
     """
     # image_gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
     h, w = image.shape[0], image.shape[1]
@@ -84,23 +81,40 @@ def minimize_energy(image, mask, initial_l, phi_l, phi_p, omega_t, omega_p, lamb
         print(f'------------Iteration: {iteration}-------------')
         u = calculate_weights_u(curr_image, phi_l, phi_p)
         v = calculate_weights_v(curr_image, omega_t, omega_p)
-        eta_bar = mean_neighbor_log_intensity_differences(curr_image).reshape((num_pixels, 1))
-        A = u + (lambda_reg * v)
-        b = lambda_reg * v * eta_bar
-        
-        for i in range(num_pixels):
-            if mask[i] == 1:
-                b[i] = 0
+        eta_bar = mean_neighbor_log_intensity_differences(
+            curr_image).reshape((num_pixels, 1))
+        uv_sum = u + (lambda_reg * v)
+        A = sparse.diags(np.array(uv_sum.sum(axis=1)).flatten())
+        # is_valid_A, message = is_symmetric_and_positive_definite_sparse(A)
+        # if not is_valid_A:
+        #     print("A doesn't seem right")
+        #     print(message)
+        #     # print(check_matrix_properties_sparse(A))
+        # else:
+        #     print("A seems legit")
+        b = uv_sum * curr_l + lambda_reg * \
+            (sparse.diags(np.array(v.sum(axis=1)).flatten()) - v) * eta_bar
 
-        print(f'u.shape={u.shape}')
-        print(f'v.shape={v.shape}')
         print(f'eta_bar.shape={eta_bar.shape}')
         print(f'A.shape={A.shape}')
         print(f'b.shape={b.shape}')
+
         curr_l, exit_code = sparse.linalg.cg(A, b, x0=curr_l, maxiter=maxiter)
-        optimal_r = np.log(image + EPSILON).astype(np.int64) - curr_l.reshape((image.shape[0], image.shape[1])).astype(np.int64)
-        curr_image = np.multiply(np.exp(curr_l.reshape((image.shape[0], image.shape[1]))), np.exp(optimal_r)).astype(np.uint8)
-        cv2.imwrite(f'../results/test_1171_iteration_{iteration}.jpg', curr_image)
+        curr_l = curr_l.reshape((num_pixels, 1))
+        print(f'curr_l.shape={curr_l.shape}')
+        if exit_code == 0:
+            print('CG SOLVER SUCCESS')
+        elif exit_code > 0:
+            print('CG SOLVER DID NOT CONVERGE')
+        else:
+            print('CG SOLVER ILLEGAL INPUT')
+
+        b[mask == 1] = 0
+        optimal_r = np.log(image + EPSILON).astype(np.int64) - \
+            curr_l.reshape((image.shape[0], image.shape[1])).astype(np.int64)
+        curr_image = np.multiply(np.exp(curr_l.reshape(
+            (image.shape[0], image.shape[1]))), np.exp(optimal_r)).astype(np.uint8)
+        cv2.imwrite(f'../results/test_1171_new15_{iteration}.jpg', curr_image)
         # curr_image = apply_new_illumination(curr_image, curr_l.reshape((h,w)))
 
     return curr_l
@@ -166,7 +180,10 @@ def calculate_weights_u(image, phi_l, phi_p):
                 np.array([curr_row, curr_col]),
                 np.array([dir[0], dir[1]]), phi_p, 2)
             data.append(illum_gaussian * pixel_gaussian)
-    return sparse.csr_matrix((np.asarray(data)[:, 0], (np.asarray(row), np.asarray(col))), shape=(num_pixels, num_pixels))
+    
+    u = sparse.csr_matrix((np.asarray(data)[:, 0], (np.asarray(row), np.asarray(col))), shape=(num_pixels, num_pixels))
+    print(f'u.shape={u.shape}')
+    return u
 
 
 def calculate_weights_v(image, omega_t, omega_p):
@@ -201,11 +218,11 @@ def calculate_weights_v(image, omega_t, omega_p):
                  log_image[neighbors[3]]]
         eta_i_bar = np.mean(eta_i)
         for dir in neighbors:
-            ## Check if neighbor is out of bounds
+            # Check if neighbor is out of bounds
             if dir[0] < 0 or dir[0] >= image.shape[0] or dir[1] < 0 or dir[1] >= image.shape[1]:
                 continue
 
-            # 
+            #
             top_dir = max(dir[0]-1, 0)
             bottom_dir = min(dir[0]+1, h-1)
             left_dir = max(dir[1]-1, 0)
@@ -235,18 +252,19 @@ def calculate_weights_v(image, omega_t, omega_p):
                 eta_i - eta_i_bar,
                 2 * omega_t, 4)
             data.append(refl_gaussian * pixel_gaussian * eta_gaussian)
-    
-    print(np.array(data).shape)
-    return sparse.csr_matrix((np.asarray(data)[:, 0], (np.asarray(row), np.asarray(col))), shape=(num_pixels, num_pixels))
+    v = sparse.csr_matrix((np.asarray(data)[:, 0], (np.asarray(row), np.asarray(col))), shape=(num_pixels, num_pixels))
+    print(f'v.shape={v.shape}')
+    return v
 
 
 rgb2gray_weightr = 0.2125
 rgb2gray_weightg = 0.7154
 rgb2gray_weightb = 0.0721
 
+
 def find_luminance_chrominance(image):
     channel = len(image.shape)
-    if channel != 3: # if gray image, make it 3-channel
+    if channel != 3:  # if gray image, make it 3-channel
         image = np.stack((image,)*3, axis=-1)
 
     luminance = np.average(image, axis=2, weights=[rgb2gray_weightr,
@@ -281,8 +299,10 @@ def apply_new_illumination(image, new_illumination):
 
     return updated_image
 
+
 def scale_image(img, scale_factor):
-    return gaussian(img, channel_axis=None)[::scale_factor,::scale_factor].copy()
+    return gaussian(img, channel_axis=None)[::scale_factor, ::scale_factor].copy()
+
 
 def create_image_pyramid(img, iterations, rev=False):
     res = [img]
@@ -335,3 +355,20 @@ def create_image_pyramid(img, iterations, rev=False):
 #         # curr_image = apply_new_illumination(curr_image, curr_l.reshape((h,w)))
 
 #     return curr_l
+
+
+
+
+# def check_all_eigenvalues(A):
+#     # Convert sparse matrix to dense, if not already dense
+#     if sparse.issparse(A):
+#         A = A.toarray()
+
+#     # Compute all eigenvalues
+#     eigenvalues = eigh(A, eigvals_only=True)
+
+#     # Check if all eigenvalues are positive
+#     if np.all(eigenvalues > 0):
+#         return "All eigenvalues are positive, matrix is positive definite"
+#     else:
+#         return "Some eigenvalues are non-positive, matrix is not positive definite"
