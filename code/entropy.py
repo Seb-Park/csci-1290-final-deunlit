@@ -151,6 +151,14 @@ def mean_neighbor_log_intensity_differences(image):
 
 
 def calculate_weights_u(image, phi_l, phi_p):
+    '''
+    Computes a weight matrix for the inputted image the details information for 
+    each pixel, i.e. information on how relevant each of its neighbors are to it
+    based on distance from the pixel 
+
+    returns weight matrix
+    '''
+
     # necessary info for sparse matrix
     row = []
     col = []
@@ -164,21 +172,35 @@ def calculate_weights_u(image, phi_l, phi_p):
         curr_row = i // image.shape[1]
         curr_col = i % image.shape[1]
 
+        ### Get four neighboring pixels TODO: why only four? 
+        ### TODO: Also, should we include the pixel itself or does 
+        ###       that not get weighted?
         neighbors = [(curr_row - 1, curr_col), (curr_row + 1, curr_col),
                      (curr_row, curr_col - 1), (curr_row, curr_col + 1)]
         for dir in neighbors:
             if dir[0] < 0 or dir[0] >= image.shape[0] or dir[1] < 0 or dir[1] >= image.shape[1]:
                 continue
 
+            ### The calculated weight for this value is to be placed in the row 
+            ### corresponding to pixel i and the column corresponding to this 
+            ### neighboring pixel
             row.append(i)
             col.append(dir[0] * image.shape[1] + dir[1])
+
+            ### Weights the color difference between two pixels
             illum_gaussian = gaussian_kernel(
                 np.array([illumination[curr_row][curr_col]]),
                 np.array([illumination[dir[0]][dir[1]]]),
                 phi_l, 1)
+
+            ### Weights the distance between two pixels
             pixel_gaussian = gaussian_kernel(
                 np.array([curr_row, curr_col]),
                 np.array([dir[0], dir[1]]), phi_p, 2)
+            ### TODO: I'm confused--aren't these the same for all for pixels?
+            ###       as in, the four neighboring pixels will all be exactly the
+            ###       same distance away from the center pixel, right?
+
             data.append(illum_gaussian * pixel_gaussian)
     
     u = sparse.csr_matrix((np.asarray(data)[:, 0], (np.asarray(row), np.asarray(col))), shape=(num_pixels, num_pixels))
