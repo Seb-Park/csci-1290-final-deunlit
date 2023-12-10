@@ -3,6 +3,7 @@ from utils import gaussian_kernel
 import matplotlib.pyplot as plt
 from scipy import sparse
 import cv2
+from skimage.filters import gaussian
 
 
 EPSILON = 1e-6  # to avoid log 0
@@ -169,6 +170,10 @@ def calculate_weights_u(image, phi_l, phi_p):
 
 
 def calculate_weights_v(image, omega_t, omega_p):
+    '''
+    Computes a weight matrix that details every pixel's relevance to every other
+    pixel based on 
+    '''
     h, w = image.shape[0], image.shape[1]
     # necessary info for sparse matrix
     row = []
@@ -196,9 +201,11 @@ def calculate_weights_v(image, omega_t, omega_p):
                  log_image[neighbors[3]]]
         eta_i_bar = np.mean(eta_i)
         for dir in neighbors:
+            ## Check if neighbor is out of bounds
             if dir[0] < 0 or dir[0] >= image.shape[0] or dir[1] < 0 or dir[1] >= image.shape[1]:
                 continue
 
+            # 
             top_dir = max(dir[0]-1, 0)
             bottom_dir = min(dir[0]+1, h-1)
             left_dir = max(dir[1]-1, 0)
@@ -237,7 +244,6 @@ rgb2gray_weightr = 0.2125
 rgb2gray_weightg = 0.7154
 rgb2gray_weightb = 0.0721
 
-
 def find_luminance_chrominance(image):
     channel = len(image.shape)
     if channel != 3: # if gray image, make it 3-channel
@@ -274,3 +280,58 @@ def apply_new_illumination(image, new_illumination):
     updated_image = np.clip(updated_image, 0, 255).astype(np.uint8)
 
     return updated_image
+
+def scale_image(img, scale_factor):
+    return gaussian(img, channel_axis=None)[::scale_factor,::scale_factor].copy()
+
+def create_image_pyramid(img, iterations, rev=False):
+    res = [img]
+    for i in range(iterations-1):
+        img = scale_image(img, 2)
+        res.append(img)
+    return res[::-1] if rev else res
+
+# def minimize_energy_with_pyramid(image, initial_l, phi_l, phi_p, omega_t, omega_p, lambda_reg=1.0, num_iter=5):
+#     """
+#     Minimize the energy function using iterative optimization.
+#     :param image: Input image.
+#     :param initial_l: Initial estimate of illumination.
+#     :param lambda_reg: Regularization parameter.
+#     :return: Optimal illumination estimate.
+#     """
+#     # image_gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+#     h, w = image.shape[0], image.shape[1]
+#     num_pixels = h * w
+
+#     curr_l = initial_l
+#     curr_image = image
+#     image_pyramid = create_image_pyramid(image, num_iter)
+#     mask = cv2.imread('shadow_mask.jpg')
+#     mask_pyramid = create_image_pyramid(mask, num_iter)
+#     for iteration in range(num_iter):
+#         print(f'------------Iteration: {iteration}-------------')
+#         curr_image = image_pyramid[iteration]
+#         h, w = curr_image.shape[0], curr_image.shape[1]
+#         num_pixels = h * w
+#         u = calculate_weights_u(curr_image, phi_l, phi_p)
+#         v = calculate_weights_v(curr_image, omega_t, omega_p)
+#         eta_bar = mean_neighbor_log_intensity_differences(curr_image).reshape((num_pixels, 1))
+#         A = u + (lambda_reg * v)
+#         b = lambda_reg * v * eta_bar
+
+#         mask_gray = cv2.cvtColor(mask_pyramid[iteration], cv2.COLOR_BGR2GRAY).reshape((num_pixels, 1))
+#         for i in range(num_pixels):
+#             if mask_gray[i] != 0:
+#                 b[i] = 0
+
+#         print(f'u.shape={u.shape}')
+#         print(f'v.shape={v.shape}')
+#         print(f'eta_bar.shape={eta_bar.shape}')
+#         print(f'A.shape={A.shape}')
+#         print(f'b.shape={b.shape}')
+#         curr_l, exit_code = sparse.linalg.cg(A, b, x0=curr_l, maxiter=5)
+#         optimal_r = np.log(image + EPSILON).astype(np.int64) - curr_l.reshape((image.shape[0], image.shape[1])).astype(np.int64)
+#         curr_image = np.multiply(np.exp(curr_l.reshape((image.shape[0], image.shape[1]))), np.exp(optimal_r)).astype(np.uint8)
+#         # curr_image = apply_new_illumination(curr_image, curr_l.reshape((h,w)))
+
+#     return curr_l
