@@ -64,7 +64,7 @@ EPSILON = 1e-6  # to avoid log 0
 #     return L_star
 
 
-def minimize_energy(image, initial_l, phi_l, phi_p, omega_t, omega_p, lambda_reg=1.0, num_iter=5):
+def minimize_energy(image, mask, initial_l, phi_l, phi_p, omega_t, omega_p, lambda_reg=1.0, num_iter=5):
     """
     Minimize the energy function using iterative optimization.
     :param image: Input image.
@@ -78,6 +78,7 @@ def minimize_energy(image, initial_l, phi_l, phi_p, omega_t, omega_p, lambda_reg
 
     curr_l = initial_l
     curr_image = image
+    mask = mask.reshape((num_pixels, 1))
     for iteration in range(num_iter):
         print(f'------------Iteration: {iteration}-------------')
         u = calculate_weights_u(curr_image, phi_l, phi_p)
@@ -85,11 +86,9 @@ def minimize_energy(image, initial_l, phi_l, phi_p, omega_t, omega_p, lambda_reg
         eta_bar = mean_neighbor_log_intensity_differences(curr_image).reshape((num_pixels, 1))
         A = u + (lambda_reg * v)
         b = lambda_reg * v * eta_bar
-
-        mask = cv2.imread('shadow_mask.jpg')
-        mask_gray = cv2.cvtColor(mask, cv2.COLOR_BGR2GRAY).reshape((num_pixels, 1))
+        
         for i in range(num_pixels):
-            if mask_gray[i] != 0:
+            if mask[i] != 0:
                 b[i] = 0
 
         print(f'u.shape={u.shape}')

@@ -12,6 +12,8 @@ def main():
     image_gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY) 
     image = image_gray
     cv2.imshow("i0", image_gray)
+    mask = cv2.imread('../data/shadow_mask.jpg')
+    mask_gray = cv2.cvtColor(mask, cv2.COLOR_BGR2GRAY)
 
     initial_l = np.zeros((image.shape[0]*image.shape[1], 1))
     phi_l = np.array([0.2]) 
@@ -20,7 +22,7 @@ def main():
     omega_p = np.array([0.5])
     lambda_reg = 1.0 
 
-    optimal_l = minimize_energy(image, initial_l, phi_l=phi_l, phi_p=phi_p, omega_t=omega_t, omega_p=omega_p).reshape((image.shape[0], image.shape[1]))
+    optimal_l = minimize_energy(image, mask_gray, initial_l, phi_l=phi_l, phi_p=phi_p, omega_t=omega_t, omega_p=omega_p).reshape((image.shape[0], image.shape[1]))
     image_gray = image_gray.astype(np.int64)
     optimal_r = np.log(image_gray + EPSILON).astype(np.int64) - optimal_l.astype(np.int64)
     optimal_img = np.multiply(np.exp(optimal_l), np.exp(optimal_r)).astype(np.uint8)
