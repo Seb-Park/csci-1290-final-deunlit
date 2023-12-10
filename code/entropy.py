@@ -64,7 +64,7 @@ EPSILON = 1e-6  # to avoid log 0
 #     return L_star
 
 
-def minimize_energy(image, mask, initial_l, phi_l, phi_p, omega_t, omega_p, lambda_reg=1.0, num_iter=5):
+def minimize_energy(image, mask, initial_l, phi_l, phi_p, omega_t, omega_p, lambda_reg=1.0, num_iter=10, maxiter=20):
     """
     Minimize the energy function using iterative optimization.
     :param image: Input image.
@@ -88,7 +88,7 @@ def minimize_energy(image, mask, initial_l, phi_l, phi_p, omega_t, omega_p, lamb
         b = lambda_reg * v * eta_bar
         
         for i in range(num_pixels):
-            if mask[i] != 0:
+            if mask[i] == 1:
                 b[i] = 0
 
         print(f'u.shape={u.shape}')
@@ -96,9 +96,10 @@ def minimize_energy(image, mask, initial_l, phi_l, phi_p, omega_t, omega_p, lamb
         print(f'eta_bar.shape={eta_bar.shape}')
         print(f'A.shape={A.shape}')
         print(f'b.shape={b.shape}')
-        curr_l, exit_code = sparse.linalg.cg(A, b, x0=curr_l, maxiter=5)
+        curr_l, exit_code = sparse.linalg.cg(A, b, x0=curr_l, maxiter=maxiter)
         optimal_r = np.log(image + EPSILON).astype(np.int64) - curr_l.reshape((image.shape[0], image.shape[1])).astype(np.int64)
         curr_image = np.multiply(np.exp(curr_l.reshape((image.shape[0], image.shape[1]))), np.exp(optimal_r)).astype(np.uint8)
+        cv2.imwrite(f'../results/test_1171_iteration_{iteration}.jpg', curr_image)
         # curr_image = apply_new_illumination(curr_image, curr_l.reshape((h,w)))
 
     return curr_l
