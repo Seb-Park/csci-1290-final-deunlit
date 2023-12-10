@@ -64,7 +64,7 @@ EPSILON = 1e-6  # to avoid log 0
 #     return L_star
 
 
-def minimize_energy(image, initial_l, phi_l, phi_p, omega_t, omega_p, lambda_reg=1.0, num_iter=10):
+def minimize_energy(image, initial_l, phi_l, phi_p, omega_t, omega_p, lambda_reg=1.0, num_iter=5):
     """
     Minimize the energy function using iterative optimization.
     :param image: Input image.
@@ -85,13 +85,22 @@ def minimize_energy(image, initial_l, phi_l, phi_p, omega_t, omega_p, lambda_reg
         eta_bar = mean_neighbor_log_intensity_differences(curr_image).reshape((num_pixels, 1))
         A = u + (lambda_reg * v)
         b = lambda_reg * v * eta_bar
+
+        mask = cv2.imread('shadow_mask.jpg')
+        mask_gray = cv2.cvtColor(mask, cv2.COLOR_BGR2GRAY).reshape((num_pixels, 1))
+        for i in range(num_pixels):
+            if mask_gray[i] != 0:
+                b[i] = 0
+
         print(f'u.shape={u.shape}')
         print(f'v.shape={v.shape}')
         print(f'eta_bar.shape={eta_bar.shape}')
         print(f'A.shape={A.shape}')
         print(f'b.shape={b.shape}')
-        curr_l, exit_code = sparse.linalg.cg(A, b, x0=curr_l, maxiter=10)
-        curr_image = apply_new_illumination(curr_image, curr_l.reshape((h,w)))
+        curr_l, exit_code = sparse.linalg.cg(A, b, x0=curr_l, maxiter=5)
+        optimal_r = np.log(image + EPSILON).astype(np.int64) - curr_l.reshape((image.shape[0], image.shape[1])).astype(np.int64)
+        curr_image = np.multiply(np.exp(curr_l.reshape((image.shape[0], image.shape[1]))), np.exp(optimal_r)).astype(np.uint8)
+        # curr_image = apply_new_illumination(curr_image, curr_l.reshape((h,w)))
 
     return curr_l
 
@@ -151,10 +160,10 @@ def calculate_weights_u(image, phi_l, phi_p):
             illum_gaussian = gaussian_kernel(
                 np.array([illumination[curr_row][curr_col]]),
                 np.array([illumination[dir[0]][dir[1]]]),
-                phi_l)
+                phi_l, 1)
             pixel_gaussian = gaussian_kernel(
                 np.array([curr_row, curr_col]),
-                np.array([dir[0], dir[1]]), phi_p)
+                np.array([dir[0], dir[1]]), phi_p, 2)
             data.append(illum_gaussian * pixel_gaussian)
     return sparse.csr_matrix((np.asarray(data)[:, 0], (np.asarray(row), np.asarray(col))), shape=(num_pixels, num_pixels))
 
@@ -209,15 +218,15 @@ def calculate_weights_v(image, omega_t, omega_p):
             refl_gaussian = gaussian_kernel(
                 np.array([reflectance[curr_row][curr_col]]),
                 np.array([reflectance[dir[0]][dir[1]]]),
-                2 * omega_t)
+                2 * omega_t, 1)
             pixel_gaussian = gaussian_kernel(
                 np.array([curr_row, curr_col]),
                 np.array([dir[0], dir[1]]),
-                omega_p)
+                omega_p, 2)
             eta_gaussian = gaussian_kernel(
                 eta_dir - eta_i_bar,
                 eta_i - eta_i_bar,
-                2 * omega_t)
+                2 * omega_t, 4)
             data.append(refl_gaussian * pixel_gaussian * eta_gaussian)
     
     print(np.array(data).shape)
