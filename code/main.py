@@ -7,7 +7,7 @@ from skimage import img_as_float32
 EPSILON = 1e-6 
 
 def main():
-    image = cv2.imread('IMG_1167.jpg')
+    image = cv2.imread('../data/IMG_1167.jpg')
     # image = cv2.imread('test_shadow.jpg')
     image_gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY) 
     image = image_gray
