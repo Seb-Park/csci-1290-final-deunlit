@@ -1,19 +1,19 @@
 import numpy as np
 import cv2
 import matplotlib.pyplot as plt
-from entropy import minimize_energy, EPSILON, N
+from entropy import minimize_energy, EPSILON, N, minimize_energy_pyramid
 from utils import average_variance_of_patches
 
 def main():
-    img_name = "IMG_1167.jpg"
-    mask_name = "mask_1167.png"
-
-    image = cv2.imread(f'../data/{img_name}')
+    img_path = '../data/'
+    img_name = 'IMG_1167.jpg'
+    mask_name = 'mask_1167.png'
+    image = cv2.imread(img_path + img_name)
     image_gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY) 
     image = image_gray
 
     # cv2.imshow("i0", image_gray)
-    mask = cv2.imread(f'../data/{mask_name}')
+    mask = cv2.imread(img_path + mask_name)
     mask_gray = cv2.cvtColor(mask, cv2.COLOR_BGR2GRAY)
 
     initial_l = np.ones((image.shape[0]*image.shape[1], 1)) # in log domain
