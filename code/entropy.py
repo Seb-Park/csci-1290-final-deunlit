@@ -65,7 +65,7 @@ EPSILON = 1e-6  # to avoid log 0
 #     return L_star
 
 
-def minimize_energy(image, mask, initial_l, phi_l, phi_p, omega_t, omega_p, lambda_reg=1.0, num_iter=10, maxiter=10000, tol=1e-5):
+def minimize_energy(image, mask, initial_l, phi_l, phi_p, omega_t, omega_p, lambda_reg=1.0, num_iter=20, maxiter=10000, tol=1e-5):
     """
     Minimize the energy function using iterative optimization.
     :return: Optimal illumination estimate (IN LOG DOMAIN!!!!!!!!!!)
@@ -99,6 +99,10 @@ def minimize_energy(image, mask, initial_l, phi_l, phi_p, omega_t, omega_p, lamb
         print(f'A.shape={A.shape}')
         print(f'b.shape={b.shape}')
         b[mask == 0] = 0
+
+        prev_r = np.log(image + EPSILON).astype(np.int64) - \
+            curr_l.reshape((image.shape[0], image.shape[1])).astype(np.int64)
+
         curr_l, exit_code = sparse.linalg.cg(A, b, x0=curr_l, maxiter=maxiter, tol=tol)
         curr_l = curr_l.reshape((num_pixels, 1))
         print(f'curr_l.shape={curr_l.shape}')
@@ -111,8 +115,9 @@ def minimize_energy(image, mask, initial_l, phi_l, phi_p, omega_t, omega_p, lamb
 
         optimal_r = np.log(image + EPSILON).astype(np.int64) - \
             curr_l.reshape((image.shape[0], image.shape[1])).astype(np.int64)
-        curr_image = np.multiply(np.exp(curr_l.reshape(
-            (image.shape[0], image.shape[1]))), np.exp(optimal_r)).astype(np.uint8)
+        curr_image = np.exp(curr_l.reshape((image.shape[0], image.shape[1]))+prev_r).astype(np.uint8)
+        # curr_image = np.multiply(np.exp(curr_l.reshape(
+        #     (image.shape[0], image.shape[1]))), np.exp(prev_r)).astype(np.uint8)
         cv2.imwrite(f'../results/test_1171_new15_{iteration}.jpg', curr_image)
         # curr_image = apply_new_illumination(curr_image, curr_l.reshape((h,w)))
 
