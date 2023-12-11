@@ -13,35 +13,35 @@ rgb2gray_weightb = 0.0721
 
 
 def find_luminance_chrominance(image):
-    # Convert the image from RGB to YUV color space
-    yuv_image = cv2.cvtColor(image, cv2.COLOR_RGB2YUV)
+#     # Convert the image from RGB to YUV color space
+#     yuv_image = cv2.cvtColor(image, cv2.COLOR_RGB2YUV)
 
-    # Split the YUV image into Y, U, and V channels
-    Y, U, V = cv2.split(yuv_image)
+#     # Split the YUV image into Y, U, and V channels
+#     Y, U, V = cv2.split(yuv_image)
 
-    # Luminance is the Y channel
-    luminance = Y
+#     # Luminance is the Y channel
+#     luminance = Y
 
-    # Chrominance can be represented by U and V channels
-    chrominance = (U, V)
+#     # Chrominance can be represented by U and V channels
+#     chrominance = (U, V)
 
-    return luminance, chrominance
+#     return luminance, chrominance
 
-    # channel = len(image.shape)
-    # if channel != 3:  # if gray image, make it 3-channel
-    #     image = np.stack((image,)*3, axis=-1)
+    channel = len(image.shape)
+    if channel != 3:  # if gray image, make it 3-channel
+        image = np.stack((image,)*3, axis=-1)
 
-    # luminance = np.average(image, axis=2, weights=[rgb2gray_weightr,
-    #                                                rgb2gray_weightg,
-    #                                                rgb2gray_weightb])
-    # chrom_r, chrom_g, chrom_b = image[:, :, 0] / (luminance+EPSILON), \
-    #     image[:, :, 1] / (luminance+EPSILON), \
-    #     image[:, :, 2] / (luminance+EPSILON)
-    # chrominance = np.dstack([np.clip(chrom_r, 0, 255),
-    #                          np.clip(chrom_g, 0, 255),
-    #                          np.clip(chrom_b, 0, 255)]) if channel == 3 else np.clip(chrom_r, 0, 255)
+    luminance = np.average(image, axis=2, weights=[rgb2gray_weightr,
+                                                   rgb2gray_weightg,
+                                                   rgb2gray_weightb])
+    chrom_r, chrom_g, chrom_b = image[:, :, 0] / (luminance+EPSILON), \
+        image[:, :, 1] / (luminance+EPSILON), \
+        image[:, :, 2] / (luminance+EPSILON)
+    chrominance = np.dstack([np.clip(chrom_r, 0, 255),
+                             np.clip(chrom_g, 0, 255),
+                             np.clip(chrom_b, 0, 255)]) if channel == 3 else np.clip(chrom_r, 0, 255)
 
-    # return np.clip(luminance, 0, 255), np.clip(chrominance, 0, 255)
+    return np.clip(luminance, 0, 255), np.clip(chrominance, 0, 255)
 
 def gaussian_kernel(x, ai, psi, d):
     '''

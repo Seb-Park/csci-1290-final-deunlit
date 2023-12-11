@@ -7,7 +7,7 @@ from skimage.filters import gaussian
 from tqdm import tqdm
 
 
-EPSILON = 1e-8  # to avoid log 0
+EPSILON = 1e-6  # to avoid log 0
 R = 1  # radius of the neighborhood
 N = (2*R+1)**2-1  # size of the neighborhood
 
@@ -20,14 +20,15 @@ def minimize_energy(image, mask, image_name, initial_l, phi_l, phi_p, omega_t, o
     h, w = image.shape[0], image.shape[1]
     num_pixels = h * w
 
-    curr_l = np.log(initial_l+EPSILON) # (num_pixel, 1)
-    curr_r = np.log(image.reshape((num_pixels, 1))+EPSILON) - curr_l # (num_pixel, 1)
+    curr_l = np.log(initial_l+EPSILON)  # (num_pixel, 1)
+    curr_r = np.log(image.reshape((num_pixels, 1))+EPSILON) - \
+        curr_l  # (num_pixel, 1)
     curr_image = image
     mask = mask.reshape((num_pixels, 1))
     for iteration in range(num_iter):
         print(f'------------Iteration: {iteration}-------------')
-        u = calculate_weights_u(curr_image, curr_l.reshape((h,w)), phi_l, phi_p)
-        v = calculate_weights_v(curr_image, curr_r.reshape((h,w)), omega_t, omega_p)
+        u = calculate_weights_u(curr_image, phi_l, phi_p)
+        v = calculate_weights_v(curr_image, omega_t, omega_p)
         eta_bar = mean_neighbor_log_intensity_differences(
             curr_image).reshape((num_pixels, 1))
         uv_sum = u + (lambda_reg * v)
@@ -42,7 +43,7 @@ def minimize_energy(image, mask, image_name, initial_l, phi_l, phi_p, omega_t, o
         b = uv_sum * curr_l + lambda_reg * \
             (sparse.diags(np.array(v.sum(axis=1)).flatten()) - v) * eta_bar
         b[mask != 0] = 0
-        
+
         print(f'eta_bar.shape={eta_bar.shape}')
         print(f'A.shape={A.shape}')
         print(f'b.shape={b.shape}')
@@ -58,19 +59,27 @@ def minimize_energy(image, mask, image_name, initial_l, phi_l, phi_p, omega_t, o
 
         curr_l = curr_l.reshape((num_pixels, 1))
         curr_l_reshaped = curr_l.reshape((h, w))
-        curr_r = np.log(image + EPSILON) - curr_l_reshaped
-        curr_image_log = curr_l_reshaped + curr_r # log domain
-        curr_image = np.exp(curr_image_log)
-        curr_img_int = np.clip((curr_image* 255).astype(np.uint8), 0, 255)
+        curr_image = curr_image / np.exp(curr_l_reshaped)
+        plt.imshow(curr_l_reshaped)
+        plt.show()
+        plt.imshow(np.exp(curr_l_reshaped))
+        plt.show()
+        # curr_r = np.log(image + EPSILON) - curr_l_reshaped
+        # curr_image_log = curr_l_reshaped + curr_r # log domain
+        # curr_image = np.exp(curr_image_log)
+        curr_img_int = np.clip((curr_image * 255).astype(np.uint8), 0, 255)
 
-        print(curr_img_int)
+        # print(curr_l)
+        # print(curr_img_int)
         print(f"optimal_l min: {np.min(np.exp(curr_l))}")
         print(f"optimal_l max: {np.max(np.exp(curr_l))}")
         print(f"optimal_r min: {np.min(np.exp(curr_r))}")
         print(f"optimal_r max: {np.max(np.exp(curr_r))}")
-        cv2.imwrite(f'../results/{image_name}_R={R}_{iteration}.jpg', curr_img_int)
+        cv2.imwrite(
+            f'../results/{image_name}_R={R}_{iteration}.jpg', curr_img_int)
 
     return curr_l
+
 
 def minimize_energy_pyramid(image, mask, initial_l, phi_l, phi_p, omega_t, omega_p, lambda_reg=1.0, num_iter=5, maxiter=10000, tol=1e-5, img_name='1171'):
     """
@@ -113,7 +122,8 @@ def minimize_energy_pyramid(image, mask, initial_l, phi_l, phi_p, omega_t, omega
         print(f'A.shape={A.shape}')
         print(f'b.shape={b.shape}')
         b[mask == 0] = 0
-        curr_l, exit_code = sparse.linalg.cg(A, b, x0=curr_l, maxiter=maxiter, tol=tol)
+        curr_l, exit_code = sparse.linalg.cg(
+            A, b, x0=curr_l, maxiter=maxiter, tol=tol)
         # print(f'eta_bar.shape={eta_bar.shape}')
         # print(f'A.shape={A.shape}')
         # print(f'b.shape={b.shape}')
@@ -135,12 +145,14 @@ def minimize_energy_pyramid(image, mask, initial_l, phi_l, phi_p, omega_t, omega
         print(pyramid[iteration+1].shape)
         print(optimal_r.shape)
         curr_image = np.multiply(np.exp(curr_l.reshape(
-            (pyramid[iteration + 1].shape[0], 
+            (pyramid[iteration + 1].shape[0],
              pyramid[iteration + 1].shape[1]))), np.exp(optimal_r)).astype(np.uint8)
-        cv2.imwrite(f'../results/test_{img_name}_new15_{iteration}.jpg', curr_image)
+        cv2.imwrite(
+            f'../results/test_{img_name}_new15_{iteration}.jpg', curr_image)
         # curr_image = apply_new_illumination(curr_image, curr_l.reshape((h,w)))
 
     return curr_l
+
 
 def mean_neighbor_log_intensity_differences(image):
     '''
@@ -164,7 +176,7 @@ def mean_neighbor_log_intensity_differences(image):
     return mean_log_intensity_diffs
 
 
-def calculate_weights_u(image, illumination, phi_l, phi_p):
+def calculate_weights_u(image, phi_l, phi_p):
     '''
     Computes a weight matrix for the inputted image the details information for 
     each pixel, i.e. information on how relevant each of its neighbors are to it
@@ -178,7 +190,7 @@ def calculate_weights_u(image, illumination, phi_l, phi_p):
     col = []
     data = []
 
-    # illumination, _ = find_luminance_chrominance(image)
+    illumination, _ = find_luminance_chrominance(image)
     h, w = image.shape[0], image.shape[1]
     # loop through each pixel
     num_pixels = h * w
@@ -228,7 +240,7 @@ def calculate_weights_u(image, illumination, phi_l, phi_p):
     return u
 
 
-def calculate_weights_v(image, reflectance, omega_t, omega_p):
+def calculate_weights_v(image, omega_t, omega_p):
     '''
     Computes a weight matrix that details every pixel's relevance to every other
     pixel based on 
@@ -239,7 +251,7 @@ def calculate_weights_v(image, reflectance, omega_t, omega_p):
     col = []
     data = []
     log_image = np.log(image + EPSILON)
-    # _, reflectance = find_luminance_chrominance(image)
+    _, reflectance = find_luminance_chrominance(image)
 
     # loop through each pixel
     num_pixels = image.shape[0] * image.shape[1]
@@ -296,11 +308,13 @@ def apply_new_illumination(image, new_illumination):
     #     np.max(new_illumination) * np.max(original_luminance)
 
     log_intensity = np.log(image + EPSILON).astype(np.int64)
-    optimal_l = new_illumination.reshape((image.shape[0], image.shape[1])).astype(np.int64)
+    optimal_l = new_illumination.reshape(
+        (image.shape[0], image.shape[1])).astype(np.int64)
 
     optimal_r = log_intensity - optimal_l
-            
-    curr_image = np.multiply(np.exp(optimal_l), np.exp(optimal_r)).astype(np.uint8)
+
+    curr_image = np.multiply(
+        np.exp(optimal_l), np.exp(optimal_r)).astype(np.uint8)
 
     # updated_image = normalized_new_illumination * chrominance
     # updated_image = np.zeros_like(image, dtype=float)
@@ -322,6 +336,7 @@ def create_image_pyramid(img, iterations, rev=False):
         img = scale_image(img, 2)
         res.append(img)
     return res[::-1] if rev else res
+
 
 def scale_up(img):
     return img.repeat(2, axis=0).repeat(2, axis=1)

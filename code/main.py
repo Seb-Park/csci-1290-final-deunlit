@@ -13,7 +13,7 @@ def main():
     image = image_gray.astype(np.float32) / 255.0
     mask = cv2.imread(img_path + mask_name)
     mask_gray = cv2.cvtColor(mask, cv2.COLOR_BGR2GRAY)
-    print(mask_gray)
+    # print(mask_gray)
 
     initial_l = np.zeros((image.shape[0]*image.shape[1], 1)).astype(np.float32) # in linear domain
     average_variance_patch = average_variance_of_patches(image)
