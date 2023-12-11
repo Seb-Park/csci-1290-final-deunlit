@@ -65,7 +65,7 @@ EPSILON = 1e-6  # to avoid log 0
 #     return L_star
 
 
-def minimize_energy(image, mask, initial_l, phi_l, phi_p, omega_t, omega_p, lambda_reg=1.0, num_iter=10, maxiter=100):
+def minimize_energy(image, mask, initial_l, phi_l, phi_p, omega_t, omega_p, lambda_reg=1.0, num_iter=10, maxiter=10000, tol=1e-5):
     """
     Minimize the energy function using iterative optimization.
     :return: Optimal illumination estimate (IN LOG DOMAIN!!!!!!!!!!)
@@ -98,8 +98,8 @@ def minimize_energy(image, mask, initial_l, phi_l, phi_p, omega_t, omega_p, lamb
         print(f'eta_bar.shape={eta_bar.shape}')
         print(f'A.shape={A.shape}')
         print(f'b.shape={b.shape}')
-
-        curr_l, exit_code = sparse.linalg.cg(A, b, x0=curr_l, maxiter=maxiter)
+        b[mask == 0] = 0
+        curr_l, exit_code = sparse.linalg.cg(A, b, x0=curr_l, maxiter=maxiter, tol=tol)
         curr_l = curr_l.reshape((num_pixels, 1))
         print(f'curr_l.shape={curr_l.shape}')
         if exit_code == 0:
@@ -109,7 +109,6 @@ def minimize_energy(image, mask, initial_l, phi_l, phi_p, omega_t, omega_p, lamb
         else:
             print('CG SOLVER ILLEGAL INPUT')
 
-        b[mask == 1] = 0
         optimal_r = np.log(image + EPSILON).astype(np.int64) - \
             curr_l.reshape((image.shape[0], image.shape[1])).astype(np.int64)
         curr_image = np.multiply(np.exp(curr_l.reshape(
@@ -244,7 +243,6 @@ def calculate_weights_v(image, omega_t, omega_p):
             if dir[0] < 0 or dir[0] >= image.shape[0] or dir[1] < 0 or dir[1] >= image.shape[1]:
                 continue
 
-            #
             top_dir = max(dir[0]-1, 0)
             bottom_dir = min(dir[0]+1, h-1)
             left_dir = max(dir[1]-1, 0)
@@ -264,7 +262,7 @@ def calculate_weights_v(image, omega_t, omega_p):
             refl_gaussian = gaussian_kernel(
                 np.array([reflectance[curr_row][curr_col]]),
                 np.array([reflectance[dir[0]][dir[1]]]),
-                2 * omega_t, 1)
+                2 * np.array([[90.2]]) , 1)
             pixel_gaussian = gaussian_kernel(
                 np.array([curr_row, curr_col]),
                 np.array([dir[0], dir[1]]),
