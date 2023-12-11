@@ -24,7 +24,7 @@ def main():
     omega_p = np.array([[90.2, 0.0], [0.0, 90.2]])
     lambda_reg = 1.0 
 
-    optimal_l = minimize_energy_pyramid(image, mask_gray, initial_l, phi_l=phi_l, phi_p=phi_p, omega_t=omega_t, omega_p=omega_p, img_name=img_name).reshape((image.shape[0], image.shape[1]))
+    optimal_l = minimize_energy(image, mask_gray, initial_l, phi_l=phi_l, phi_p=phi_p, omega_t=omega_t, omega_p=omega_p, img_name=img_name).reshape((image.shape[0], image.shape[1]))
     image_gray = image_gray.astype(np.int64)
     optimal_r = np.log(image_gray + EPSILON).astype(np.int64) - optimal_l.astype(np.int64)
     optimal_img = np.multiply(np.exp(optimal_l), np.exp(optimal_r)).astype(np.uint8)

@@ -98,7 +98,7 @@ def minimize_energy(image, mask, initial_l, phi_l, phi_p, omega_t, omega_p, lamb
         print(f'eta_bar.shape={eta_bar.shape}')
         print(f'A.shape={A.shape}')
         print(f'b.shape={b.shape}')
-        b[mask == 0] = 0
+        b[mask > 0] = 0
         curr_l, exit_code = sparse.linalg.cg(A, b, x0=curr_l, maxiter=maxiter, tol=tol)
         curr_l = curr_l.reshape((num_pixels, 1))
         print(f'curr_l.shape={curr_l.shape}')
@@ -111,6 +111,8 @@ def minimize_energy(image, mask, initial_l, phi_l, phi_p, omega_t, omega_p, lamb
 
         optimal_r = np.log(image + EPSILON).astype(np.int64) - \
             curr_l.reshape((image.shape[0], image.shape[1])).astype(np.int64)
+        plt.imshow(curr_l.reshape((image.shape[0], image.shape[1])))
+        plt.show()
         curr_image = np.multiply(np.exp(curr_l.reshape(
             (image.shape[0], image.shape[1]))), np.exp(optimal_r)).astype(np.uint8)
         cv2.imwrite(f'../results/test_{img_name}_new15_{iteration}.jpg', curr_image)
