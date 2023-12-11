@@ -2,7 +2,7 @@ import numpy as np
 import cv2
 import matplotlib.pyplot as plt
 from entropy import minimize_energy, EPSILON, N, minimize_energy_pyramid
-from utils import average_variance_of_patches
+from utils import average_variance_of_patches, find_luminance_chrominance
 
 def main():
     img_path = '../data/'
@@ -10,13 +10,12 @@ def main():
     mask_name = 'mask_1167.png'
     image = cv2.imread(img_path + img_name)
     image_gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY) 
-    image = image_gray
-
-    # cv2.imshow("i0", image_gray)
+    image = image_gray.astype(np.float32) / 255.0
     mask = cv2.imread(img_path + mask_name)
     mask_gray = cv2.cvtColor(mask, cv2.COLOR_BGR2GRAY)
+    print(mask_gray)
 
-    initial_l = np.ones((image.shape[0]*image.shape[1], 1)) # in log domain
+    initial_l = np.zeros((image.shape[0]*image.shape[1], 1)).astype(np.float32) # in linear domain
     average_variance_patch = average_variance_of_patches(image)
     phi_l = np.array([[0.2]]) 
     phi_p = np.array([[0.1, 0.0], [0.0, 0.1]])
