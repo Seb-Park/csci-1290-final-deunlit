@@ -4,17 +4,6 @@ import scipy.sparse.linalg as spla
 import scipy.linalg
 
 
-# def gaussian_kernel(x, ai, psi, d):
-#     '''
-#     Multi-dimensional gaussian kernel according to equation 3
-#     '''
-#     # d = x.shape[0]  # Dimensionality of the data
-#     # normalization_factor = 1 / ((2 * np.pi) ** (d / 2) * np.linalg.det(psi) ** 0.5)
-#     normalization_factor = 1 / ((2 * np.pi) ** (d / 2) * psi ** 0.5)
-#     exponent = -0.5 * np.dot((x - ai).T, (x - ai) / psi)
-    
-#     return normalization_factor * np.exp(exponent)
-
 def gaussian_kernel(x, ai, psi, d):
     '''
     Multi-dimensional gaussian kernel according to equation 3
@@ -28,6 +17,28 @@ def gaussian_kernel(x, ai, psi, d):
     else:
         exponent = -0.5 * np.dot((x - ai).T, (x - ai) / psi)
         return normalization_factor * np.exp(exponent)
+    
+    
+def get_pixel_neighborhood_data(i_x, i_y, radius, h, w, use_data, data=None):
+    neighborhood_coords = []
+
+    # Define the range for x and y based on the radius, handle boundaries using replication
+    for dx in range(-radius, radius + 1):
+        for dy in range(-radius, radius + 1):
+            # skip the center pixel itself
+            if dx == 0 and dy == 0:
+                continue
+            nx = min(max(i_x + dx, 0), h - 1)
+            ny = min(max(i_y + dy, 0), w - 1)
+
+            if use_data:
+                neighborhood_coords.append(data[nx, ny])
+            else:
+                neighborhood_coords.append((nx, ny))
+    
+    out = np.array(neighborhood_coords)
+    return out
+
 
 def is_symmetric_and_positive_definite_sparse(A):
     """

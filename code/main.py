@@ -1,7 +1,7 @@
 import numpy as np
 import cv2
 import matplotlib.pyplot as plt
-from entropy import minimize_energy
+from entropy import minimize_energy, N
 from skimage import img_as_float32
 
 EPSILON = 1e-6 
@@ -17,7 +17,8 @@ def main():
     initial_l = np.ones((image.shape[0]*image.shape[1], 1)) # in log domain
     phi_l = np.array([[0.2]]) 
     phi_p = np.array([[0.2, 0.0], [0.0, 0.2]])
-    omega_t = np.array([[90.2, 0.0, 0.0, 0.0], [0.0, 90.2, 0.0, 0.0], [0.0, 0.0, 90.2, 0.0], [0.0, 0.0, 0.0, 90.2]])
+    # omega_t = np.array([[90.2, 0.0, 0.0, 0.0], [0.0, 90.2, 0.0, 0.0], [0.0, 0.0, 90.2, 0.0], [0.0, 0.0, 0.0, 90.2]])
+    omega_t = np.diag([90]*N)
     omega_p = np.array([[90.2, 0.0], [0.0, 90.2]])
     lambda_reg = 1.0 
 
