@@ -71,6 +71,7 @@ def minimize_energy(image, mask, initial_l, phi_l, phi_p, omega_t, omega_p, lamb
     Minimize the energy function using iterative optimization.
     :return: Optimal illumination estimate (IN LOG DOMAIN!!!!!!!!!!)
     """
+
     h, w = image.shape[0], image.shape[1]
     num_pixels = h * w
 
@@ -128,11 +129,16 @@ def minimize_energy(image, mask, initial_l, phi_l, phi_p, omega_t, omega_p, lamb
         optimal_r = np.log(image + EPSILON).astype(np.int64) - \
             curr_l.reshape((image.shape[0], image.shape[1])).astype(np.int64)
         l_star = np.exp(curr_l.reshape((image.shape[0], image.shape[1])))
-        curr_image = np.exp(curr_l.reshape((image.shape[0], image.shape[1])) + prev_r).astype(np.uint8)
+        curr_image = np.exp(curr_l.reshape((image.shape[0], image.shape[1])) + prev_r)
+        curr_image /= np.max(curr_image)
+        # print(curr_image)
+        # print((curr_image * 255).astype(np.uint8))
+        # plt.imshow(curr_image, cmap='gray')
+        # plt.show()
         # curr_image = np.multiply(l_star / np.max(l_star), np.exp(prev_r)).astype(np.uint8)
         # curr_image = np.multiply(np.exp(curr_l.reshape(
         #     (image.shape[0], image.shape[1]))), np.exp(prev_r)).astype(np.uint8)
-        cv2.imwrite(f'../results/{img_name}_{iteration}.jpg', curr_image)
+        cv2.imwrite(f'../results/{img_name}_{iteration}.jpg', (curr_image * 255).astype(np.uint8))
         # curr_image = apply_new_illumination(curr_image, curr_l.reshape((h,w)))
 
     return curr_l
