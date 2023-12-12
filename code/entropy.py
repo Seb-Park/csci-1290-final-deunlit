@@ -66,7 +66,7 @@ EPSILON = 1e-6  # to avoid log 0
 #     return L_star
 
 
-def minimize_energy(image, mask, initial_l, phi_l, phi_p, omega_t, omega_p, lambda_reg=1.0, num_iter=30, maxiter=10000, tol=1e-5):
+def minimize_energy(image, mask, initial_l, phi_l, phi_p, omega_t, omega_p, lambda_reg=1.0, num_iter=30, maxiter=10000, tol=1e-5, img_name='test_1167_matrix'):
     """
     Minimize the energy function using iterative optimization.
     :return: Optimal illumination estimate (IN LOG DOMAIN!!!!!!!!!!)
@@ -78,9 +78,14 @@ def minimize_energy(image, mask, initial_l, phi_l, phi_p, omega_t, omega_p, lamb
     curr_image = image
     mask = mask.reshape((num_pixels, 1))
     for iteration in range(num_iter):
+        curr_image = curr_image.astype(np.float64)
+        # plt.imshow(curr_image, cmap='gray')
+        # plt.show()
+        print("Image Type: ", (curr_image).dtype)
         print(f'------------Iteration: {iteration}-------------')
         u = calculate_weights_u(curr_image, phi_l, phi_p)
         v = calculate_weights_v(curr_image, omega_t, omega_p)
+        print(f"u type: {u.dtype}, v type: {v.dtype}")
         eta_bar = mean_neighbor_log_intensity_differences(
             curr_image).reshape((num_pixels, 1))
         uv_sum = u + (lambda_reg * v)
@@ -98,13 +103,20 @@ def minimize_energy(image, mask, initial_l, phi_l, phi_p, omega_t, omega_p, lamb
         print(f'eta_bar.shape={eta_bar.shape}')
         print(f'A.shape={A.shape}')
         print(f'b.shape={b.shape}')
-        b[mask == 0] = 0
+        b[mask > 0] = 0
 
         prev_r = np.log(image + EPSILON).astype(np.int64) - \
             curr_l.reshape((image.shape[0], image.shape[1])).astype(np.int64)
+        
+        # plt.imshow(curr_l.reshape((image.shape[0], image.shape[1])), cmap='gray')
+        # plt.show()
+        # plt.imshow(np.exp(curr_l).reshape((image.shape[0], image.shape[1]))/np.max(np.exp(curr_l)), cmap='gray')
+        # plt.show()
 
         curr_l, exit_code = sparse.linalg.cg(A, b, x0=curr_l, maxiter=maxiter, tol=tol)
         curr_l = curr_l.reshape((num_pixels, 1))
+        print(f"Min log l* : {np.min(curr_l)}, Max log l*: {np.max(curr_l)}")
+        print(f"Min l* : {np.min(np.exp(curr_l))}, Max l*: {np.max(np.exp(curr_l))}")
         print(f'curr_l.shape={curr_l.shape}')
         if exit_code == 0:
             print('CG SOLVER SUCCESS')
@@ -115,10 +127,12 @@ def minimize_energy(image, mask, initial_l, phi_l, phi_p, omega_t, omega_p, lamb
 
         optimal_r = np.log(image + EPSILON).astype(np.int64) - \
             curr_l.reshape((image.shape[0], image.shape[1])).astype(np.int64)
-        curr_image = np.exp(curr_l.reshape((image.shape[0], image.shape[1]))+prev_r).astype(np.uint8)
+        l_star = np.exp(curr_l.reshape((image.shape[0], image.shape[1])))
+        curr_image = np.exp(curr_l.reshape((image.shape[0], image.shape[1])) + prev_r).astype(np.uint8)
+        # curr_image = np.multiply(l_star / np.max(l_star), np.exp(prev_r)).astype(np.uint8)
         # curr_image = np.multiply(np.exp(curr_l.reshape(
         #     (image.shape[0], image.shape[1]))), np.exp(prev_r)).astype(np.uint8)
-        cv2.imwrite(f'../results/test_1167_matrix_{iteration}.jpg', curr_image)
+        cv2.imwrite(f'../results/{img_name}_{iteration}.jpg', curr_image)
         # curr_image = apply_new_illumination(curr_image, curr_l.reshape((h,w)))
 
     return curr_l
@@ -321,8 +335,6 @@ def find_luminance_chrominance(image):
     chrominance = np.dstack([np.clip(chrom_r, 0, 255),
                              np.clip(chrom_g, 0, 255),
                              np.clip(chrom_b, 0, 255)]) if channel == 3 else np.clip(chrom_r, 0, 255)
-    # plt.imshow(luminance, cmap="gray")
-    # plt.show()
     return np.clip(luminance, 0, 255), np.clip(chrominance, 0, 255)
 
 
