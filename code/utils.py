@@ -18,11 +18,22 @@ def gaussian_kernel(x, ai, psi, d):
         exponent = -0.5 * np.dot((x - ai).T, (x - ai) / psi)
         return normalization_factor * np.exp(exponent)
     
-    
-def get_pixel_neighborhood_data(i_x, i_y, radius, h, w, use_data, data=None):
-    neighborhood_coords = []
 
-    # Define the range for x and y based on the radius, handle boundaries using replication
+def get_pixel_neighborhood_data(i_x, i_y, radius, h, w, use_data, data=None):
+    
+    # if radius == 0, return 4 direct neighbors
+    if radius == 0:
+        top = max(i_x-1, 0)
+        bottom = min(i_x+1, h-1)
+        left = max(i_y-1, 0)
+        right = min(i_y+1, w-1)
+        if use_data:
+            return np.array([data[top, i_y],data[bottom, i_y], data[i_x, left],data[i_x, right]])
+        else: 
+            return np.array([(top, i_y), (bottom, i_y), (i_x, left), (i_x, right)])
+        
+
+    neighborhood_coords = []
     for dx in range(-radius, radius + 1):
         for dy in range(-radius, radius + 1):
             # skip the center pixel itself

@@ -3,70 +3,15 @@ from utils import gaussian_kernel, is_symmetric_and_positive_definite_sparse, ge
 import matplotlib.pyplot as plt
 import cv2
 from scipy import sparse
+from tqdm import tqdm
 from skimage.filters import gaussian
 
-R = 1
-N = (2*R+1)**2 - 1
+R = 0
+N = (2*R+1)**2 - 1 if R != 0 else 4
 EPSILON = 1e-6  # to avoid log 0
 
 
-# def energy_function(curr_L, image, lambda_reg, phi_l, phi_p, omega_t):
-#     """
-#     Define the energy function to be minimized according to equation 16.
-#     :param curr_L: Current illumination estimate, (h, w)
-#     :param image: Input image, (h, w)
-#     :param lambda_reg: Regularization parameter, (1,)
-#     :param phi_l, phi_p, omega_t: smoothing matrices to calculate weights u and v
-#     :return: Energy value for the current illumination estimate.
-#     """
-#     image_gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
-#     h, w = image.shape[0], image.shape[1]
-#     # u and v should be sparse matrix of (h*w, h*w)
-#     u = calculate_weights_u(image, phi_l, phi_p)
-#     v = calculate_weights_v(image, omega_t)
-#     eta_bar = mean_neighbor_log_intensity_differences(image_gray)
-
-#     L_star = np.zeros((h, w))
-
-#     # using r and c for row and col to avoid confusing with pixel i and neighbor j
-#     for r in range(h):
-#         for c in range(w):
-#             # Handle boundaries
-#             top = max(r-1, 0)
-#             bottom = min(r+1, h-1)
-#             left = max(c-1, 0)
-#             right = min(c+1, w-1)
-
-#             # log illumination of current pixel
-#             log_L_i = np.log(curr_L[r, c] + EPSILON)
-#             l_ijs = [
-#                 np.abs(log_L_i - np.log(curr_L[top, c] + EPSILON)),
-#                 np.abs(log_L_i - np.log(curr_L[bottom, c] + EPSILON)),
-#                 np.abs(log_L_i - np.log(curr_L[r, left] + EPSILON)),
-#                 np.abs(log_L_i - np.log(curr_L[r, right] + EPSILON))
-#             ]
-#             u_ijs = [
-#                 u[r*c, top*c],
-#                 u[r*c, bottom*c],
-#                 u[r*c, r*left],
-#                 u[r*c, r*right],
-#             ]
-#             v_ijs = [
-#                 v[r*c, top*c],
-#                 v[r*c, bottom*c],
-#                 v[r*c, r*left],
-#                 v[r*c, r*right],
-#             ]
-
-#             smoothness_term = u_ijs * l_ijs**2
-#             texture_term = v_ijs * (l_ijs - eta_bar[r, c])**2
-
-#             L_star[r, c] = smoothness_term + lambda_reg * texture_term
-
-#     return L_star
-
-
-def minimize_energy(image, mask, initial_l, phi_l, phi_p, omega_t, omega_p, lambda_reg=1.0, num_iter=30, maxiter=10000, tol=1e-5):
+def minimize_energy(image, mask, initial_l, phi_l, phi_p, omega_t, omega_p, lambda_reg=1.0, num_iter=20, maxiter=10000, tol=1e-5):
     """
     Minimize the energy function using iterative optimization.
     :return: Optimal illumination estimate (IN LOG DOMAIN!!!!!!!!!!)
@@ -103,7 +48,8 @@ def minimize_energy(image, mask, initial_l, phi_l, phi_p, omega_t, omega_p, lamb
         prev_r = np.log(image + EPSILON).astype(np.int64) - \
             curr_l.reshape((image.shape[0], image.shape[1])).astype(np.int64)
 
-        curr_l, exit_code = sparse.linalg.cg(A, b, x0=curr_l, maxiter=maxiter, tol=tol)
+        curr_l, exit_code = sparse.linalg.cg(
+            A, b, x0=curr_l, maxiter=maxiter, tol=tol)
         curr_l = curr_l.reshape((num_pixels, 1))
         print(f'curr_l.shape={curr_l.shape}')
         if exit_code == 0:
@@ -113,13 +59,13 @@ def minimize_energy(image, mask, initial_l, phi_l, phi_p, omega_t, omega_p, lamb
         else:
             print('CG SOLVER ILLEGAL INPUT')
 
-        optimal_r = np.log(image + EPSILON).astype(np.int64) - \
-            curr_l.reshape((image.shape[0], image.shape[1])).astype(np.int64)
-        curr_image = np.exp(curr_l.reshape((image.shape[0], image.shape[1]))+prev_r).astype(np.uint8)
+        # optimal_r = np.log(image + EPSILON).astype(np.int64) - \
+        #     curr_l.reshape((image.shape[0], image.shape[1])).astype(np.int64)
+        curr_image = np.exp(curr_l.reshape(
+            (image.shape[0], image.shape[1]))+prev_r).astype(np.uint8)
         # curr_image = np.multiply(np.exp(curr_l.reshape(
         #     (image.shape[0], image.shape[1]))), np.exp(prev_r)).astype(np.uint8)
-        cv2.imwrite(f'../results/test_1167_matrix_{iteration}.jpg', curr_image)
-        # curr_image = apply_new_illumination(curr_image, curr_l.reshape((h,w)))
+        cv2.imwrite(f'../results/test_1167_R={R}_{iteration}.jpg', curr_image)
 
     return curr_l
 
@@ -137,7 +83,7 @@ def mean_neighbor_log_intensity_differences(image):
 
     for r in range(h):
         for c in range(w):
-            # # neighborhood with boundary considerations
+            # neighborhood with boundary considerations
             # top = max(r-1, 0)
             # bottom = min(r+1, h-1)
             # left = max(c-1, 0)
@@ -174,44 +120,45 @@ def calculate_weights_u(image, phi_l, phi_p):
 
     # loop through each pixel
     num_pixels = image.shape[0] * image.shape[1]
-    for i in range(num_pixels):
+    for i in tqdm(range(num_pixels), desc='Calculating u'):
         curr_row = i // image.shape[1]
         curr_col = i % image.shape[1]
 
-        ### Get four neighboring pixels TODO: why only four? 
-        ### TODO: Also, should we include the pixel itself or does 
-        ###       that not get weighted?
-        # neighbors = [(curr_row - 1, curr_col), (curr_row + 1, curr_col),
-        #              (curr_row, curr_col - 1), (curr_row, curr_col + 1)]
-        neighbors = get_pixel_neighborhood_data(
-            curr_row, curr_col, R, h, w, use_data=False)
+        # Get four neighboring pixels TODO: why only four?
+        # TODO: Also, should we include the pixel itself or does
+        # that not get weighted?
+        neighbors = [(curr_row - 1, curr_col), (curr_row + 1, curr_col),
+                     (curr_row, curr_col - 1), (curr_row, curr_col + 1)]
+        # neighbors = get_pixel_neighborhood_data(
+        #     curr_row, curr_col, R, h, w, use_data=False)
         for dir in neighbors:
             if dir[0] < 0 or dir[0] >= image.shape[0] or dir[1] < 0 or dir[1] >= image.shape[1]:
                 continue
 
-            ### The calculated weight for this value is to be placed in the row 
-            ### corresponding to pixel i and the column corresponding to this 
-            ### neighboring pixel
+            # The calculated weight for this value is to be placed in the row
+            # corresponding to pixel i and the column corresponding to this
+            # neighboring pixel
             row.append(i)
             col.append(dir[0] * image.shape[1] + dir[1])
 
-            ### Weights the color difference between two pixels
+            # Weights the color difference between two pixels
             illum_gaussian = gaussian_kernel(
                 np.array([illumination[curr_row][curr_col]]),
                 np.array([illumination[dir[0]][dir[1]]]),
                 2*phi_l, 1)
 
-            ### Weights the distance between two pixels
+            # Weights the distance between two pixels
             pixel_gaussian = gaussian_kernel(
                 np.array([curr_row, curr_col]),
                 np.array([dir[0], dir[1]]), 2*phi_p, 2)
-            ### TODO: I'm confused--aren't these the same for all for pixels?
-            ###       as in, the four neighboring pixels will all be exactly the
-            ###       same distance away from the center pixel, right?
+            # TODO: I'm confused--aren't these the same for all for pixels?
+            # as in, the four neighboring pixels will all be exactly the
+            # same distance away from the center pixel, right?
 
             data.append(illum_gaussian * pixel_gaussian)
-    
-    u = sparse.csr_matrix((np.asarray(data)[:, 0], (np.asarray(row), np.asarray(col))), shape=(num_pixels, num_pixels))
+
+    u = sparse.csr_matrix((np.asarray(data)[:, 0], (np.asarray(
+        row), np.asarray(col))), shape=(num_pixels, num_pixels))
     print(f'u.shape={u.shape}')
     return u
 
@@ -231,7 +178,7 @@ def calculate_weights_v(image, omega_t, omega_p):
 
     # loop through each pixel
     num_pixels = image.shape[0] * image.shape[1]
-    for i in range(num_pixels):
+    for i in tqdm(range(num_pixels), desc='Calculating v'):
         curr_row = i // image.shape[1]
         curr_col = i % image.shape[1]
 
@@ -242,10 +189,14 @@ def calculate_weights_v(image, omega_t, omega_p):
 
         # neighbors = [(top, curr_col), (bottom, curr_col),
         #              (curr_row, left), (curr_row, right)]
-        # eta_i = [log_image[neighbors[0]],
-        #          log_image[neighbors[1]],
-        #          log_image[neighbors[2]],
-        #          log_image[neighbors[3]]]
+        # eta_i = np.array([log_image[neighbors[0]],
+        #                   log_image[neighbors[1]],
+        #                   log_image[neighbors[2]],
+        #                   log_image[neighbors[3]]])
+        # t_i = np.array([reflectance[neighbors[0]],
+        #                 reflectance[neighbors[1]],
+        #                 reflectance[neighbors[2]],
+        #                 reflectance[neighbors[3]],])
         neighbors = get_pixel_neighborhood_data(
             curr_row, curr_col, R, h, w, use_data=False)
         eta_i = get_pixel_neighborhood_data(
@@ -253,26 +204,28 @@ def calculate_weights_v(image, omega_t, omega_p):
         eta_i_bar = np.mean(eta_i)
         t_i = get_pixel_neighborhood_data(
             curr_row, curr_col, R, h, w, use_data=True, data=reflectance)
-        eta_i_bar = np.mean(eta_i)
         for j in neighbors:
             # Check if neighbor is out of bounds
             if j[0] < 0 or j[0] >= image.shape[0] or j[1] < 0 or j[1] >= image.shape[1]:
                 continue
 
-            # top_dir = max(dir[0]-1, 0)
-            # bottom_dir = min(dir[0]+1, h-1)
-            # left_dir = max(dir[1]-1, 0)
-            # right_dir = min(dir[1]+1, w-1)
-
-            # neighbors_dir = [(top_dir, dir[1]), (bottom_dir, dir[1]),
-            #                  (dir[0], left_dir), (dir[0], right_dir)]
-            # eta_dir = [
-            #     log_image[neighbors_dir[0]],
-            #     log_image[neighbors_dir[1]],
-            #     log_image[neighbors_dir[2]],
-            #     log_image[neighbors_dir[3]],
+            # top_j = max(j[0]-1, 0)
+            # bottom_j = min(j[0]+1, h-1)
+            # left_j = max(j[1]-1, 0)
+            # right_j = min(j[1]+1, w-1)
+            # neighbors_j = [(top_j, j[1]), (bottom_j, j[1]),
+            #                (j[0], left_j), (j[0], right_j)]
+            # eta_j = [
+            #     log_image[neighbors_j[0]],
+            #     log_image[neighbors_j[1]],
+            #     log_image[neighbors_j[2]],
+            #     log_image[neighbors_j[3]],
             # ]
-            # eta_dir_bar = np.mean(eta_dir)
+            # eta_j_bar = np.mean(eta_j)
+            # t_j = np.array([reflectance[neighbors_j[0]],
+            #                 reflectance[neighbors_j[1]],
+            #                 reflectance[neighbors_j[2]],
+            #                 reflectance[neighbors_j[3]],])
             eta_j = get_pixel_neighborhood_data(
                 j[0], j[1], R, h, w, use_data=True, data=log_image)
             eta_j_bar = np.mean(eta_j)
@@ -284,7 +237,7 @@ def calculate_weights_v(image, omega_t, omega_p):
 
             refl_gaussian = gaussian_kernel(
                 t_j, t_i,
-                2 * omega_t , N)
+                2 * omega_t, N)
             pixel_gaussian = gaussian_kernel(
                 np.array([j[0], j[1]]),
                 np.array([curr_row, curr_col]),
@@ -292,12 +245,13 @@ def calculate_weights_v(image, omega_t, omega_p):
             eta_gaussian = gaussian_kernel(
                 eta_j - eta_j_bar,
                 eta_i - eta_i_bar,
-                2 * omega_t, 
+                2 * omega_t,
                 N)
             v_ij = refl_gaussian * pixel_gaussian * eta_gaussian
             data.append(v_ij)
-    
-    v = sparse.csr_matrix((np.asarray(data), (np.asarray(row), np.asarray(col))), shape=(num_pixels, num_pixels))
+
+    v = sparse.csr_matrix((np.asarray(data), (np.asarray(
+        row), np.asarray(col))), shape=(num_pixels, num_pixels))
     print(f'v.shape={v.shape}')
     return v
 
@@ -400,20 +354,3 @@ def create_image_pyramid(img, iterations, rev=False):
 #         # curr_image = apply_new_illumination(curr_image, curr_l.reshape((h,w)))
 
 #     return curr_l
-
-
-
-
-# def check_all_eigenvalues(A):
-#     # Convert sparse matrix to dense, if not already dense
-#     if sparse.issparse(A):
-#         A = A.toarray()
-
-#     # Compute all eigenvalues
-#     eigenvalues = eigh(A, eigvals_only=True)
-
-#     # Check if all eigenvalues are positive
-#     if np.all(eigenvalues > 0):
-#         return "All eigenvalues are positive, matrix is positive definite"
-#     else:
-#         return "Some eigenvalues are non-positive, matrix is not positive definite"
