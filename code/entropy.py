@@ -6,7 +6,7 @@ from scipy import sparse
 from tqdm import tqdm
 from skimage.filters import gaussian
 
-R = 0
+R = 1 # R=0 -> direct neighbor mode
 N = (2*R+1)**2 - 1 if R != 0 else 4
 EPSILON = 1e-6  # to avoid log 0
 
@@ -20,15 +20,16 @@ def minimize_energy(image, mask, initial_l, phi_l, phi_p, omega_t, omega_p, lamb
     h, w = image.shape[0], image.shape[1]
     num_pixels = h * w
 
-    curr_l = initial_l
-    curr_image = image
+    curr_l = initial_l # ???
+    curr_image = image.astype(np.float64) # linear, [0,255], float64
     mask = mask.reshape((num_pixels, 1))
     for iteration in range(num_iter):
-        curr_image = curr_image.astype(np.float64)
+        print(f'------------Iteration: {iteration}-------------')
+        # curr_image = curr_image.astype(np.float64)
         # plt.imshow(curr_image, cmap='gray')
         # plt.show()
         print("Image Type: ", (curr_image).dtype)
-        print(f'------------Iteration: {iteration}-------------')
+
         u = calculate_weights_u(curr_image, phi_l, phi_p)
         v = calculate_weights_v(curr_image, omega_t, omega_p)
         print(f"u type: {u.dtype}, v type: {v.dtype}")
@@ -52,7 +53,7 @@ def minimize_energy(image, mask, initial_l, phi_l, phi_p, omega_t, omega_p, lamb
         b[mask > 0] = 0
 
         prev_r = np.log(image + EPSILON).astype(np.int64) - \
-            curr_l.reshape((image.shape[0], image.shape[1])).astype(np.int64)
+            curr_l.reshape(h,w).astype(np.int64)
 
         curr_l, exit_code = sparse.linalg.cg(A, b, x0=curr_l, maxiter=maxiter, tol=tol)
         curr_l = curr_l.reshape((num_pixels, 1))
@@ -68,8 +69,7 @@ def minimize_energy(image, mask, initial_l, phi_l, phi_p, omega_t, omega_p, lamb
 
         # optimal_r = np.log(image + EPSILON).astype(np.int64) - \
         #     curr_l.reshape((image.shape[0], image.shape[1])).astype(np.int64)
-        curr_image = np.exp(curr_l.reshape(
-            (image.shape[0], image.shape[1]))+prev_r).astype(np.uint8)
+        curr_image = np.exp(curr_l.reshape((h, w))+prev_r).astype(np.uint8)
         # curr_image = np.multiply(np.exp(curr_l.reshape(
         #     (image.shape[0], image.shape[1]))), np.exp(prev_r)).astype(np.uint8)
         cv2.imwrite(f'../results/{img_name}_R={R}_{iteration}.jpg', curr_image)
@@ -136,10 +136,10 @@ def calculate_weights_u(image, phi_l, phi_p):
         # Get four neighboring pixels TODO: why only four?
         # TODO: Also, should we include the pixel itself or does
         # that not get weighted?
-        neighbors = [(curr_row - 1, curr_col), (curr_row + 1, curr_col),
-                     (curr_row, curr_col - 1), (curr_row, curr_col + 1)]
-        # neighbors = get_pixel_neighborhood_data(
-        #     curr_row, curr_col, R, h, w, use_data=False)
+        # neighbors = [(curr_row - 1, curr_col), (curr_row + 1, curr_col),
+        #              (curr_row, curr_col - 1), (curr_row, curr_col + 1)]
+        neighbors = get_pixel_neighborhood_data(
+            curr_row, curr_col, R, h, w, use_data=False)
         for dir in neighbors:
             if dir[0] < 0 or dir[0] >= image.shape[0] or dir[1] < 0 or dir[1] >= image.shape[1]:
                 continue
@@ -152,14 +152,14 @@ def calculate_weights_u(image, phi_l, phi_p):
 
             # Weights the color difference between two pixels
             illum_gaussian = gaussian_kernel(
-                np.array([illumination[curr_row][curr_col]]),
                 np.array([illumination[dir[0]][dir[1]]]),
+                np.array([illumination[curr_row][curr_col]]),
                 2*phi_l, 1)
 
             # Weights the distance between two pixels
             pixel_gaussian = gaussian_kernel(
-                np.array([curr_row, curr_col]),
-                np.array([dir[0], dir[1]]), 2*phi_p, 2)
+                np.array([dir[0], dir[1]]),
+                np.array([curr_row, curr_col]), 2*phi_p, 2)
             # TODO: I'm confused--aren't these the same for all for pixels?
             # as in, the four neighboring pixels will all be exactly the
             # same distance away from the center pixel, right?

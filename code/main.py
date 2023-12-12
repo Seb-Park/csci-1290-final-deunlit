@@ -34,7 +34,7 @@ def main():
     optimal_l = minimize_energy(image, mask_gray, initial_l, \
                                 phi_l=phi_l, phi_p=phi_p, \
                                 omega_t=omega_t, omega_p=omega_p, \
-                                img_name=src_name, num_iter=30).reshape((image.shape[0], image.shape[1]))
+                                img_name=src_name, num_iter=10).reshape((image.shape[0], image.shape[1]))
     image_gray = image_gray.astype(np.int64)
     optimal_r = np.log(image_gray + EPSILON).astype(np.int64) - optimal_l.astype(np.int64)
     optimal_img = np.multiply(np.exp(optimal_l), np.exp(optimal_r)).astype(np.uint8)
@@ -49,8 +49,8 @@ def main():
     print("--------------OPTIMAL--------------")
     print(f"optimal_l min: {np.min(np.exp(optimal_l))}")
     print(f"optimal_l max: {np.max(np.exp(optimal_l))}")
-    print(f"optimal_r min: {np.min(np.exp(optimal_l))}")
-    print(f"optimal_r max: {np.max(np.exp(optimal_l))}")
+    print(f"optimal_r min: {np.min(np.exp(optimal_r))}")
+    print(f"optimal_r max: {np.max(np.exp(optimal_r))}")
 
 
 
