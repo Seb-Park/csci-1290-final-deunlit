@@ -50,7 +50,7 @@ def minimize_energy(image, mask, initial_l, phi_l, phi_p, omega_t, omega_p, lamb
         print(f'eta_bar.shape={eta_bar.shape}')
         print(f'A.shape={A.shape}')
         print(f'b.shape={b.shape}')
-        b[mask > 0] = 0
+        b[mask > 5] = 0
 
         prev_r = np.log(image + EPSILON).astype(np.int64) - \
             curr_l.reshape(h,w).astype(np.int64)
@@ -69,11 +69,12 @@ def minimize_energy(image, mask, initial_l, phi_l, phi_p, omega_t, omega_p, lamb
 
         # optimal_r = np.log(image + EPSILON).astype(np.int64) - \
         #     curr_l.reshape((image.shape[0], image.shape[1])).astype(np.int64)
-        curr_image = np.exp(curr_l.reshape((h, w))+prev_r).astype(np.uint8)
+        curr_image = np.exp(curr_l.reshape((h, w)) + prev_r)
+        curr_image /= np.max(curr_image)
         # curr_image = np.multiply(np.exp(curr_l.reshape(
         #     (image.shape[0], image.shape[1]))), np.exp(prev_r)).astype(np.uint8)
-        cv2.imwrite(f'../results/{img_name}_R={R}_{iteration}.jpg', curr_image)
-        # cv2.imwrite(f'../results/{img_name}_{iteration}.jpg', (curr_image * 255).astype(np.uint8))
+        # cv2.imwrite(f'../results/{img_name}_R={R}_{iteration}.jpg', curr_image)
+        cv2.imwrite(f'../results/{img_name}_R={R}_{iteration}.jpg', (curr_image * 255).astype(np.uint8))
         # curr_image = apply_new_illumination(curr_image, curr_l.reshape((h,w)))
 
     return curr_l
