@@ -25,8 +25,8 @@ def minimize_energy(image, mask, initial_l, phi_l, phi_p, omega_t, omega_p, lamb
     curr_image = image.astype(np.float64) # linear, [0,255], float64
     mask = mask.reshape((num_pixels, 1))
     for iteration in range(num_iter):
-        plt.imshow(curr_image, cmap='gray')
-        plt.show()
+        # plt.imshow(curr_image, cmap='gray')
+        # plt.show()
         print(f'------------Iteration: {iteration}-------------')
         # curr_image = curr_image.astype(np.float64)
         # plt.imshow(curr_image, cmap='gray')
@@ -55,7 +55,7 @@ def minimize_energy(image, mask, initial_l, phi_l, phi_p, omega_t, omega_p, lamb
         print(f'b.shape={b.shape}')
         b[mask > 5] = 0
 
-        prev_r = np.log(image + EPSILON).astype(np.int64) - \
+        prev_r = np.log(image + EPSILON).astype(np.float64) - \
             curr_l.reshape(h,w).astype(np.int64)
 
         # print(f'Image type: {(image + EPSILON).dtype}')
@@ -71,19 +71,19 @@ def minimize_energy(image, mask, initial_l, phi_l, phi_p, omega_t, omega_p, lamb
         # plt.imshow((image + EPSILON).astype(np.float64))
         # plt.show()
 
-        plt.imshow(curr_l.reshape(h,w).astype(np.float64), cmap='spring')
-        plt.show()
+        # plt.imshow(curr_l.reshape(h,w).astype(np.float64), cmap='spring')
+        # plt.show()
 
-        plt.imshow(prev_r, cmap='gray')
-        plt.show()
+        # plt.imshow(prev_r, cmap='gray')
+        # plt.show()
         
         min_r = np.min(prev_r)
         if(min_r < 0):
             prev_r -= np.min(prev_r)
 
         print(f'Prev_r min: {np.min(prev_r)}, max: {np.max(prev_r)}')
-        plt.imshow(prev_r, cmap='gray')
-        plt.show()
+        # plt.imshow(prev_r, cmap='gray')
+        # plt.show()
 
         curr_l, exit_code = sparse.linalg.cg(A, b, x0=curr_l, maxiter=maxiter, tol=tol)
         curr_l = curr_l.reshape((num_pixels, 1))
@@ -100,11 +100,11 @@ def minimize_energy(image, mask, initial_l, phi_l, phi_p, omega_t, omega_p, lamb
         # optimal_r = np.log(image + EPSILON).astype(np.int64) - \
         #     curr_l.reshape((image.shape[0], image.shape[1])).astype(np.int64)
         curr_image = np.exp(curr_l.reshape((h, w)) + prev_r)
-        plt.imshow(curr_image, cmap='gray')
-        plt.show()
+        # plt.imshow(curr_image, cmap='gray')
+        # plt.show()
         curr_image /= np.max(curr_image)
-        plt.imshow(curr_image, cmap='gray')
-        plt.show()
+        # plt.imshow(curr_image, cmap='gray')
+        # plt.show()
         # curr_image = np.multiply(np.exp(curr_l.reshape(
         #     (image.shape[0], image.shape[1]))), np.exp(prev_r)).astype(np.uint8)
         # cv2.imwrite(f'../results/{img_name}_R={R}_{iteration}.jpg', curr_image)
@@ -114,7 +114,7 @@ def minimize_energy(image, mask, initial_l, phi_l, phi_p, omega_t, omega_p, lamb
             cv2.imwrite(f'../results/{img_name}_R={R}_{iteration}.jpg', (curr_image * 255).astype(np.uint8))
         # curr_image = apply_new_illumination(curr_image, curr_l.reshape((h,w)))
 
-    return curr_l
+    return curr_l, curr_image
 
 
 def mean_neighbor_log_intensity_differences(image):
