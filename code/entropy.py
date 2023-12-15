@@ -11,7 +11,7 @@ N = (2*R+1)**2 - 1 if R != 0 else 4
 EPSILON = 1e-6  # to avoid log 0
 
 
-def minimize_energy(image, mask, initial_l, phi_l, phi_p, omega_t, omega_p, lambda_reg=1.0, num_iter=20, maxiter=10000, tol=1e-5, img_name='test_1167_matrix'):
+def minimize_energy(image, mask, initial_l, phi_l, phi_p, omega_t, omega_p, lambda_reg=1.0, num_iter=20, maxiter=10000, tol=1e-5, img_name='test_1167_matrix', chrominance=None):
     """
     Minimize the energy function using iterative optimization.
     :return: Optimal illumination estimate (IN LOG DOMAIN!!!!!!!!!!)
@@ -21,9 +21,12 @@ def minimize_energy(image, mask, initial_l, phi_l, phi_p, omega_t, omega_p, lamb
     num_pixels = h * w
 
     curr_l = initial_l # ???
+    float_img = image.astype(np.float64) / 255
     curr_image = image.astype(np.float64) # linear, [0,255], float64
     mask = mask.reshape((num_pixels, 1))
     for iteration in range(num_iter):
+        plt.imshow(curr_image, cmap='gray')
+        plt.show()
         print(f'------------Iteration: {iteration}-------------')
         # curr_image = curr_image.astype(np.float64)
         # plt.imshow(curr_image, cmap='gray')
@@ -55,6 +58,33 @@ def minimize_energy(image, mask, initial_l, phi_l, phi_p, omega_t, omega_p, lamb
         prev_r = np.log(image + EPSILON).astype(np.int64) - \
             curr_l.reshape(h,w).astype(np.int64)
 
+        # print(f'Image type: {(image + EPSILON).dtype}')
+        print(f'Image int max: {np.max((image + EPSILON).astype(np.int64))}')
+        print(f'Image int min: {np.min((image + EPSILON).astype(np.int64))}')
+        print(f'Image int log max: {np.max(np.log(image + EPSILON).astype(np.int64))}')
+        print(f'Image int log min: {np.min(np.log(image + EPSILON).astype(np.int64))}')
+        print(f'Image flt log max: {np.max(np.log(image + EPSILON).astype(np.float64))}')
+        print(f'Image flt log min: {np.min(np.log(image + EPSILON).astype(np.float64))}')
+        print(f'Image flt max: {np.max((image + EPSILON))}')
+        print(f'Image flt min: {np.min((image + EPSILON))}')
+
+        # plt.imshow((image + EPSILON).astype(np.float64))
+        # plt.show()
+
+        plt.imshow(curr_l.reshape(h,w).astype(np.float64), cmap='spring')
+        plt.show()
+
+        plt.imshow(prev_r, cmap='gray')
+        plt.show()
+        
+        min_r = np.min(prev_r)
+        if(min_r < 0):
+            prev_r -= np.min(prev_r)
+
+        print(f'Prev_r min: {np.min(prev_r)}, max: {np.max(prev_r)}')
+        plt.imshow(prev_r, cmap='gray')
+        plt.show()
+
         curr_l, exit_code = sparse.linalg.cg(A, b, x0=curr_l, maxiter=maxiter, tol=tol)
         curr_l = curr_l.reshape((num_pixels, 1))
         print(f"Min log l* : {np.min(curr_l)}, Max log l*: {np.max(curr_l)}")
@@ -70,11 +100,18 @@ def minimize_energy(image, mask, initial_l, phi_l, phi_p, omega_t, omega_p, lamb
         # optimal_r = np.log(image + EPSILON).astype(np.int64) - \
         #     curr_l.reshape((image.shape[0], image.shape[1])).astype(np.int64)
         curr_image = np.exp(curr_l.reshape((h, w)) + prev_r)
+        plt.imshow(curr_image, cmap='gray')
+        plt.show()
         curr_image /= np.max(curr_image)
+        plt.imshow(curr_image, cmap='gray')
+        plt.show()
         # curr_image = np.multiply(np.exp(curr_l.reshape(
         #     (image.shape[0], image.shape[1]))), np.exp(prev_r)).astype(np.uint8)
         # cv2.imwrite(f'../results/{img_name}_R={R}_{iteration}.jpg', curr_image)
-        cv2.imwrite(f'../results/{img_name}_R={R}_{iteration}.jpg', (curr_image * 255).astype(np.uint8))
+        if chrominance is None:
+            cv2.imwrite(f'../results/{img_name}_R={R}_{iteration}.jpg', (curr_image * 255).astype(np.uint8))
+        else:
+            cv2.imwrite(f'../results/{img_name}_R={R}_{iteration}.jpg', (curr_image * 255).astype(np.uint8))
         # curr_image = apply_new_illumination(curr_image, curr_l.reshape((h,w)))
 
     return curr_l
