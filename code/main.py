@@ -2,23 +2,27 @@ import numpy as np
 import cv2
 import matplotlib.pyplot as plt
 import sys
-from entropy import minimize_energy, N, find_luminance_chrominance
+from entropy import minimize_energy, N
+from utils import find_luminance_chrominance
 
 EPSILON = 1e-6 
 
 def main():
     image_path = '../data/'
-    src_name = 'IMG_1171'
-    mask_name = 'mask_1171'
+    src_name = 'IMG_1167'
+    mask_name = 'shadow_mask'
     jpg = '.jpg'
     png='.png'
 
     image_color = cv2.imread( image_path + src_name + jpg )
-    _, chrom = find_luminance_chrominance( image_color )
+    lum, chrom = find_luminance_chrominance( image_color, EPSILON )
     image_gray = cv2.cvtColor(image_color, cv2.COLOR_BGR2GRAY) 
+
     image = image_gray
+    # plt.imshow(image_gray - lum.astype(np.int32))
+    # plt.show()
     # cv2.imshow("i0", image_gray)
-    mask = cv2.imread( image_path + mask_name + png )
+    mask = cv2.imread( image_path + mask_name + jpg )
     mask_gray = cv2.cvtColor(mask, cv2.COLOR_BGR2GRAY)
 
     # np.set_printoptions(threshold=sys.maxsize)

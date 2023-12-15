@@ -83,6 +83,26 @@ def is_symmetric_and_positive_definite_sparse(A):
     else:
         return False, "Matrix is not symmetric"
 
+rgb2gray_weightr = 0.2125
+rgb2gray_weightg = 0.7154
+rgb2gray_weightb = 0.0721
+
+
+def find_luminance_chrominance(image, EPSILON=0):
+    channel = len(image.shape)
+    if channel != 3:  # if gray image, make it 3-channel
+        image = np.stack((image,)*3, axis=-1)
+
+    luminance = np.average(image, axis=2, weights=[rgb2gray_weightr,
+                                                   rgb2gray_weightg,
+                                                   rgb2gray_weightb])
+    chrom_r, chrom_g, chrom_b = image[:, :, 0] / (luminance+EPSILON), \
+        image[:, :, 1] / (luminance+EPSILON), \
+        image[:, :, 2] / (luminance+EPSILON)
+    chrominance = np.dstack([np.clip(chrom_r, 0, 255),
+                             np.clip(chrom_g, 0, 255),
+                             np.clip(chrom_b, 0, 255)]) if channel == 3 else np.clip(chrom_r, 0, 255)
+    return np.clip(luminance, 0, 255), np.clip(chrominance, 0, 255)
 
 # def check_matrix_properties_sparse(A):
 #     # Check if A is square

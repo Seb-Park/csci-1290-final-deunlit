@@ -1,5 +1,5 @@
 import numpy as np
-from utils import gaussian_kernel, is_symmetric_and_positive_definite_sparse, get_pixel_neighborhood_data
+from utils import gaussian_kernel, is_symmetric_and_positive_definite_sparse, get_pixel_neighborhood_data, find_luminance_chrominance
 import matplotlib.pyplot as plt
 import cv2
 from scipy import sparse
@@ -163,7 +163,7 @@ def calculate_weights_u(image, phi_l, phi_p):
     col = []
     data = []
 
-    illumination, _ = find_luminance_chrominance(image)
+    illumination, _ = find_luminance_chrominance(image, EPSILON=EPSILON)
 
     # loop through each pixel
     num_pixels = image.shape[0] * image.shape[1]
@@ -221,7 +221,7 @@ def calculate_weights_v(image, omega_t, omega_p):
     col = []
     data = []
     log_image = np.log(image + EPSILON)
-    _, reflectance = find_luminance_chrominance(image)
+    _, reflectance = find_luminance_chrominance(image, EPSILON=EPSILON)
 
     # loop through each pixel
     num_pixels = image.shape[0] * image.shape[1]
@@ -302,32 +302,9 @@ def calculate_weights_v(image, omega_t, omega_p):
     print(f'v.shape={v.shape}')
     return v
 
-
-rgb2gray_weightr = 0.2125
-rgb2gray_weightg = 0.7154
-rgb2gray_weightb = 0.0721
-
-
-def find_luminance_chrominance(image):
-    channel = len(image.shape)
-    if channel != 3:  # if gray image, make it 3-channel
-        image = np.stack((image,)*3, axis=-1)
-
-    luminance = np.average(image, axis=2, weights=[rgb2gray_weightr,
-                                                   rgb2gray_weightg,
-                                                   rgb2gray_weightb])
-    chrom_r, chrom_g, chrom_b = image[:, :, 0] / (luminance+EPSILON), \
-        image[:, :, 1] / (luminance+EPSILON), \
-        image[:, :, 2] / (luminance+EPSILON)
-    chrominance = np.dstack([np.clip(chrom_r, 0, 255),
-                             np.clip(chrom_g, 0, 255),
-                             np.clip(chrom_b, 0, 255)]) if channel == 3 else np.clip(chrom_r, 0, 255)
-    return np.clip(luminance, 0, 255), np.clip(chrominance, 0, 255)
-
-
 def apply_new_illumination(image, new_illumination):
     'apply a new illumination on a given image'
-    original_luminance, chrominance = find_luminance_chrominance(image)
+    original_luminance, chrominance = find_luminance_chrominance(image, EPSILON=EPSILON)
 
     # Normalize the new illumination to match the scale of the original luminance
     normalized_new_illumination = new_illumination / \

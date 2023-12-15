@@ -2,6 +2,7 @@ from scipy import sparse
 import numpy as np
 from skimage.filters import gaussian
 import cv2
+from utils import find_luminance_chrominance
 
 from matplotlib import pyplot as plt
 
@@ -105,77 +106,42 @@ def poisson_blend(source, mask, target):
 
     return np.stack([blend_r, blend_g, blend_b], axis=2)
 
-def blend_one(im, mask):
-    print(im.shape)
+def invert_mask(mask, pad=False):
+    '''
+    Inverts mask to work with poisson blending, pads edges so that program
+    doesn't try to blend with the edges of the image.
+    '''
     one_d_mask = mask[:, :, 0]
-    # masked_im = im.copy()
-    # masked_im[one_d_mask == 0] = 0
-    # masked_im_2 = im.copy()
-    # masked_im_2[one_d_mask == 255] = 0
-    plt.imshow(one_d_mask)
-    plt.show()
-    print(np.unique(one_d_mask))
-    print(np.max(one_d_mask))
-    print(np.min(one_d_mask))
-    # plt.imshow(masked_im)
-    # plt.show()
-    # plt.imshow(masked_im_2)
-    # plt.show()
     inverted = mask.copy().astype(np.float32)
     inverted[one_d_mask >= 127] = [0, 0, 0]
     inverted[one_d_mask < 127] = [1., 1., 1.]
     # inverted = gaussian(inverted, sigma=0.5)
     # inverted[inverted < 1] = 0
-    h, w, _ = mask.shape
-    inverted[:, 0:2, :] = 0
-    inverted[:, w-2:w, :] = 0
-    inverted[0:2, :, :] = 0
-    inverted[h-2:h, :, :] = 0
-    plt.imshow(inverted)
-    plt.show()
-    building = cv2.imread('../data/IMG_1167.jpg')
-    building = cv2.cvtColor(building, cv2.COLOR_BGR2GRAY)
-    building = np.stack([building] * 3, axis=2)
+    if pad:
+        h, w, _ = mask.shape
+        inverted[:, 0:2, :] = 0
+        inverted[:, w-2:w, :] = 0
+        inverted[0:2, :, :] = 0
+        inverted[h-2:h, :, :] = 0
+    return inverted
+
+def blend_gray(im, mask, original):
     blended = poisson_blend(im.astype(np.float32) / 255, 
-                            inverted.astype(np.float32), 
-                            building.astype(np.float32) / 255)
-    plt.imshow(blended)
-    plt.show()
-    plt.imshow(im)
+                            mask.astype(np.float32), 
+                            original.astype(np.float32) / 255)
+    print (np.max(blended))
+    plt.imshow(blended.clip(0, 1))
     plt.show()
     ### CURRENTLY Making white because colliding with the wall I suppose. Need 
     ### to add a black border around mask?
     ### Blend once for grayscale, once for color?
 
-blend_one(cv2.imread('../results/IMG_1167_R=1_49.jpg'), 
-          cv2.imread('../data/shadow_mask.jpg'))
+mask = invert_mask(cv2.imread('../data/shadow_mask.jpg'))
 
-# def blend_images(a, b):
-#     '''
-#     Performs poisson blending given a warped image a and a base image b. 
-#     Generates a mask for a, including all pixels in a that are not completely 
-#     black. Applies a gaussian blur to the mask to effectively shrink the mask 
-#     (algorithm includes only completely white values). Underlaps a below b, then
-#     poisson blends a onto b overlapped onto a.
-#     '''
-#     # composites a onto b
-#     # mask = np.sum(a, axis=2)
-#     # mask[mask > 0] = 1
-#     # mask = np.stack
-#     mask_mask = (a == 0).all(axis=2)
-#     mask = np.zeros(a.shape)
-#     mask[mask_mask] = [0, 0, 0]
-#     mask[~mask_mask] = [1, 1, 1]
-#     mask = gaussian(mask, sigma=1.2)
-#     # plt.imshow(mask)
-#     # plt.show()
-#     # return 
-#     # print(a/255)
-#     # return poisson_blend(a / 255, mask.astype(dtype=np.float32), b / 255) * 255
-#     return poisson_blend(a / 255, mask.astype(dtype=np.float32), underlap(a, b) / 255) * 255
+original_im = cv2.imread('../data/IMG_1167.jpg')
+original_im = cv2.cvtColor(original_im, cv2.COLOR_BGR2GRAY)
+original_im = np.stack([original_im] * 3, axis=2)
 
-# def underlap(a, b):
-#     # overlaps b onto a
-#     out = b.copy()
-#     out[out <= 0] = a[out <= 0]
-#     return out
+blend_gray(cv2.imread('../results/IMG_1167_R=1_49.jpg'), 
+           mask,
+           original_im)
