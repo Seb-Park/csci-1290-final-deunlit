@@ -92,7 +92,7 @@ def poisson_blend(source, mask, target):
     Returns:
         np.array of blended image
     """
-
+    print(source.shape, mask.shape, target.shape)
     # TODO: Implement this function!
     src_r, src_g, src_b = source[:, :, 0], source[:, :, 1], source[:, :, 2]
     mask_r, mask_g, mask_b = mask[:, :, 0], mask[:, :, 1], mask[:, :, 2]
@@ -103,23 +103,29 @@ def poisson_blend(source, mask, target):
     blend_g, _ = poisson_blend_channel(src_g, mask_g, tgt_g, A=A)
     blend_b, _ = poisson_blend_channel(src_b, mask_b, tgt_b, A=A)
 
-    return np.stack([blend_r, blend_g, blend_b], axis=2) / 255
+    return np.stack([blend_r, blend_g, blend_b], axis=2)
 
 def blend_one(im, mask):
+    print(im.shape)
     one_d_mask = mask[:, :, 0]
     # masked_im = im.copy()
     # masked_im[one_d_mask == 0] = 0
     # masked_im_2 = im.copy()
     # masked_im_2[one_d_mask == 255] = 0
-    # plt.imshow(one_d_mask)
-    # plt.show()
+    plt.imshow(one_d_mask)
+    plt.show()
+    print(np.unique(one_d_mask))
+    print(np.max(one_d_mask))
+    print(np.min(one_d_mask))
     # plt.imshow(masked_im)
     # plt.show()
     # plt.imshow(masked_im_2)
     # plt.show()
     inverted = mask.copy().astype(np.float32)
-    inverted[one_d_mask == 255] = [0, 0, 0]
-    inverted[one_d_mask < 255] = [255, 255, 255]
+    inverted[one_d_mask >= 127] = [0, 0, 0]
+    inverted[one_d_mask < 127] = [1., 1., 1.]
+    # inverted = gaussian(inverted, sigma=0.5)
+    # inverted[inverted < 1] = 0
     h, w, _ = mask.shape
     inverted[:, 0:2, :] = 0
     inverted[:, w-2:w, :] = 0
@@ -127,7 +133,15 @@ def blend_one(im, mask):
     inverted[h-2:h, :, :] = 0
     plt.imshow(inverted)
     plt.show()
-    plt.imshow(poisson_blend(im, inverted.astype(np.float32), im))
+    building = cv2.imread('../data/IMG_1167.jpg')
+    building = cv2.cvtColor(building, cv2.COLOR_BGR2GRAY)
+    building = np.stack([building] * 3, axis=2)
+    blended = poisson_blend(im.astype(np.float32) / 255, 
+                            inverted.astype(np.float32), 
+                            building.astype(np.float32) / 255)
+    plt.imshow(blended)
+    plt.show()
+    plt.imshow(im)
     plt.show()
     ### CURRENTLY Making white because colliding with the wall I suppose. Need 
     ### to add a black border around mask?
