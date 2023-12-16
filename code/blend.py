@@ -86,9 +86,9 @@ def poisson_blend(source, mask, target):
     main.py).
 
     Args:
-        source - np.array of source image
-        mask   - np.array of binary mask
-        target - np.array of target image
+        source - np.array of source image between 0 and 1
+        mask   - np.array of binary mask between 0 and 1
+        target - np.array of target image between 0 and 1
 
     Returns:
         np.array of blended image
@@ -126,22 +126,40 @@ def invert_mask(mask, pad=False):
     return inverted
 
 def blend_gray(im, mask, original):
-    blended = poisson_blend(im.astype(np.float32) / 255, 
+    """
+    Im must be between 0 and 1
+    Mask must be between 0 and 1
+    Original is between 0 and 255
+    """
+    original = cv2.cvtColor(original, cv2.COLOR_BGR2GRAY)
+    original = np.stack([original] * 3, axis=2)
+    blended = poisson_blend(im.astype(np.float32), 
                             mask.astype(np.float32), 
                             original.astype(np.float32) / 255)
-    print (np.max(blended))
-    plt.imshow(blended.clip(0, 1))
+    return blended.clip(0, 1)
+
+def blend_color(im, mask):
+    blended = poisson_blend(im.astype(np.float32), 
+                            mask.astype(np.float32), 
+                            im.astype(np.float32))
+    plt.imshow(np.flip(blended.clip(0, 1), axis=2)-np.flip(im, axis=2))
     plt.show()
-    ### CURRENTLY Making white because colliding with the wall I suppose. Need 
-    ### to add a black border around mask?
-    ### Blend once for grayscale, once for color?
+    print(np.max(np.abs(np.flip(blended.clip(0, 1), axis=2)-np.flip(im, axis=2))))
+    return blended.clip(0, 1)
 
-mask = invert_mask(cv2.imread('../data/shadow_mask.jpg'))
+# mask = invert_mask(cv2.imread('../data/shadow_mask.jpg'))
 
-original_im = cv2.imread('../data/IMG_1167.jpg')
-original_im = cv2.cvtColor(original_im, cv2.COLOR_BGR2GRAY)
-original_im = np.stack([original_im] * 3, axis=2)
+# original_im = cv2.imread('../data/IMG_1167.jpg')
 
-blend_gray(cv2.imread('../results/IMG_1167_R=1_49.jpg'), 
-           mask,
-           original_im)
+# processed = cv2.imread('../results/IMG_1167_R=1_49.jpg')
+
+# colored = cv2.imread('../test.png')
+
+# print(processed.dtype, mask.dtype, original_im.dtype)
+
+# blent = blend_gray(processed.astype(np.float32) / 255,
+#                    mask,
+#                    original_im)
+
+# blend_color(colored.astype(np.float32) / 255,
+#             mask)
