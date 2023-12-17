@@ -2,7 +2,7 @@ import numpy as np
 import cv2
 import matplotlib.pyplot as plt
 import sys
-from entropy import minimize_energy, N
+from entropy import minimize_energy, N, R
 from utils import find_luminance_chrominance
 from blend import blend_gray, invert_mask
 
@@ -37,7 +37,7 @@ def main():
     omega_t = np.diag([90]*N)
     omega_p = np.array([[90.2, 0.0], [0.0, 90.2]])
     lambda_reg = 1.0 
-    num_iter = 30
+    num_iter = 50
 
     optimal_l, optimal_img = minimize_energy(image, mask_gray, initial_l, \
                                 phi_l=phi_l, phi_p=phi_p, \
@@ -72,7 +72,7 @@ def main():
     print(np.min(rechromed))
     plt.imshow(np.flip(rechromed, axis=2))
     plt.show()
-    cv2.imwrite(f'../results/{src_name}_color_{num_iter}_iters.jpg', (rechromed * 255).astype(np.uint8))
+    cv2.imwrite(f'../results/{src_name}_color_{num_iter}_iters_R={R}.jpg', (rechromed * 255).astype(np.uint8))
     # cv2.imshow("i", optimal_img)
     # cv2.waitKey(0)
     print("--------------OPTIMAL--------------")
