@@ -2,8 +2,9 @@ import cv2
 from utils import find_luminance_chrominance
 import numpy as np
 import matplotlib.pyplot as plt
-from blend import invert_mask
+from blend import invert_mask, poisson_blend
 from skimage import color
+from skimage.filters import gaussian
 
 def combine_luma_chroma(luma_img, chroma_img):
     luma_img = luma_img.astype(np.float32) / 255
@@ -35,7 +36,7 @@ def combine_luma_chroma(luma_img, chroma_img):
 
 ################################################################################
 
-def blend_color_one_image(img, mask):
+def blend_color_one_image(img, mask, original=None):
     '''
     Takes the image to blend
     and an "inverted" mask, where shadowed pixels are positive, and non-shadowed
@@ -59,7 +60,17 @@ def blend_color_one_image(img, mask):
     one_d_bool_mask = bool_mask[0, :, :]
     combined = np.ma.array(new_lab_shadow.filled(1) * non_shadowed_part.filled(1))
     combined = color.lab2rgb(new_lab_shadow) * 255
-    plt.imshow(np.flip(combined.astype(np.uint8), axis=2))
+    # plt.imshow(np.flip(combined.astype(np.uint8), axis=2))
+    # plt.show()
+    return combined.astype(np.uint8)
+    plt.imshow(np.flip(combined / 255, axis=2))
+    plt.show()
+    expanded_mask = gaussian(mask, sigma=0.3)
+    expanded_mask[expanded_mask < 1] = 0
+    plt.imshow(expanded_mask)
+    plt.show()
+    blended = poisson_blend(combined / 255, expanded_mask, original.astype(np.float32) / 255)
+    plt.imshow(np.flip(blended, axis=2))
     plt.show()
 
 def align_channels(ch1, ch2):
@@ -75,7 +86,8 @@ def align_three_channels(im1, im2):
         align_channels(im1_y, im2_y), \
         align_channels(im1_z, im2_z)
 
-recolored = cv2.imread('../extra_post/2254/recolored.jpg')
-mask = invert_mask(cv2.imread('../extra_post/2254/mask.jpg'))
+recolored = cv2.imread('../extra_post/2411/recolored.jpg')
+mask = invert_mask(cv2.imread('../extra_post/2411/mask.jpg'))
+original = cv2.imread('../extra_post/2411/original.jpg')
 
 blend_color_one_image(recolored, mask)

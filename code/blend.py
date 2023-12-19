@@ -148,6 +148,8 @@ def blend_color(im, mask):
     print(np.max(np.abs(np.flip(blended.clip(0, 1), axis=2)-np.flip(im, axis=2))))
     return blended.clip(0, 1)
 
+
+
 # mask = invert_mask(cv2.imread('../data/shadow_mask.jpg'))
 
 # original_im = cv2.imread('../data/IMG_1167.jpg')
