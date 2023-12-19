@@ -20,9 +20,8 @@ def minimize_energy(image, mask, initial_l, phi_l, phi_p, omega_t, omega_p, lamb
     h, w = image.shape[0], image.shape[1]
     num_pixels = h * w
 
-    curr_l = initial_l # ???
-    float_img = image.astype(np.float64) / 255
-    curr_image = image.astype(np.float64) # linear, [0,255], float64
+    curr_l = initial_l
+    curr_image = image.astype(np.float64)
     mask = mask.reshape((num_pixels, 1))
     for iteration in range(num_iter):
         
@@ -49,7 +48,6 @@ def minimize_energy(image, mask, initial_l, phi_l, phi_p, omega_t, omega_p, lamb
         prev_r = np.log(image + EPSILON).astype(np.float64) - \
             curr_l.reshape(h,w).astype(np.int64)
 
-        # print(f'Image type: {(image + EPSILON).dtype}')
         print(f'Image int max: {np.max((image + EPSILON).astype(np.int64))}')
         print(f'Image int min: {np.min((image + EPSILON).astype(np.int64))}')
         print(f'Image int log max: {np.max(np.log(image + EPSILON).astype(np.int64))}')
@@ -85,7 +83,6 @@ def minimize_energy(image, mask, initial_l, phi_l, phi_p, omega_t, omega_p, lamb
             cv2.imwrite(f'../results/{img_name}_R={R}_{iteration}.jpg', (curr_image * 255).astype(np.uint8))
         else:
             cv2.imwrite(f'../results/{img_name}_R={R}_{iteration}.jpg', (curr_image * 255).astype(np.uint8))
-        # curr_image = apply_new_illumination(curr_image, curr_l.reshape((h,w)))
 
     return curr_l, curr_image
 
@@ -133,11 +130,6 @@ def calculate_weights_u(image, phi_l, phi_p):
         curr_row = i // image.shape[1]
         curr_col = i % image.shape[1]
 
-        # Get four neighboring pixels TODO: why only four?
-        # TODO: Also, should we include the pixel itself or does
-        # that not get weighted?
-        # neighbors = [(curr_row - 1, curr_col), (curr_row + 1, curr_col),
-        #              (curr_row, curr_col - 1), (curr_row, curr_col + 1)]
         neighbors = get_pixel_neighborhood_data(
             curr_row, curr_col, R, h, w, use_data=False)
         for dir in neighbors:
@@ -160,9 +152,6 @@ def calculate_weights_u(image, phi_l, phi_p):
             pixel_gaussian = gaussian_kernel(
                 np.array([dir[0], dir[1]]),
                 np.array([curr_row, curr_col]), 2*phi_p, 2)
-            # TODO: I'm confused--aren't these the same for all for pixels?
-            # as in, the four neighboring pixels will all be exactly the
-            # same distance away from the center pixel, right?
 
             data.append(illum_gaussian * pixel_gaussian)
 
@@ -231,22 +220,6 @@ def calculate_weights_v(image, omega_t, omega_p):
         row), np.asarray(col))), shape=(num_pixels, num_pixels))
     print(f'v.shape={v.shape}')
     return v
-
-def apply_new_illumination(image, new_illumination):
-    'apply a new illumination on a given image'
-    original_luminance, chrominance = find_luminance_chrominance(image, EPSILON=EPSILON)
-
-    # Normalize the new illumination to match the scale of the original luminance
-    normalized_new_illumination = new_illumination / \
-        np.max(new_illumination) * np.max(original_luminance)
-
-    updated_image = normalized_new_illumination * chrominance
-
-    # Clip values to the valid range and convert to the appropriate datatype
-    updated_image = np.clip(updated_image, 0, 255).astype(np.uint8)
-
-    return updated_image
-
 
 def scale_image(img, scale_factor):
     return gaussian(img, channel_axis=None)[::scale_factor, ::scale_factor].copy()
