@@ -12,6 +12,7 @@ def main():
     image_path = '../data/'
     src_name = 'IMG_2411'
     mask_name = 'mask_2411'
+    num_iter = 10
     jpg = '.jpg'
     png='.png'
 
@@ -19,17 +20,9 @@ def main():
     lum, chrom = find_luminance_chrominance( image_color, EPSILON )
     image_gray = cv2.cvtColor(image_color, cv2.COLOR_BGR2GRAY) 
 
-    # print(chrom)
-
     image = image_gray
-    # plt.imshow(image_gray - lum.astype(np.int32))
-    # plt.show()
-    # cv2.imshow("i0", image_gray)
     mask = cv2.imread( image_path + mask_name + jpg )
     mask_gray = cv2.cvtColor(mask, cv2.COLOR_BGR2GRAY)
-
-    # np.set_printoptions(threshold=sys.maxsize)
-    # print(mask_gray)
 
     initial_l = np.ones((image.shape[0]*image.shape[1], 1)) # in log domain
     phi_l = np.array([[0.2]]) 
@@ -37,7 +30,6 @@ def main():
     omega_t = np.diag([90]*N)
     omega_p = np.array([[90.2, 0.0], [0.0, 90.2]])
     lambda_reg = 1.0 
-    num_iter = 10
 
     optimal_l, optimal_img = minimize_energy(image, mask_gray, initial_l, \
                                 phi_l=phi_l, phi_p=phi_p, \
