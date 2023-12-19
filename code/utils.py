@@ -91,7 +91,7 @@ rgb2gray_weightb = 0.0721
 def find_luminance_chrominance(image, EPSILON=0):
     channel = len(image.shape)
     if channel != 3:  # if gray image, make it 3-channel
-        image = np.stack((image,)*3, axis=-1)
+        image = np.stack((image,) * 3, axis=-1)
 
     luminance = np.average(image, axis=2, weights=[rgb2gray_weightr,
                                                    rgb2gray_weightg,

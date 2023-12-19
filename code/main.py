@@ -10,8 +10,8 @@ EPSILON = 1e-6
 
 def main():
     image_path = '../data/'
-    src_name = 'IMG_7387'
-    mask_name = 'mask_7387'
+    src_name = 'IMG_2411'
+    mask_name = 'mask_2411'
     jpg = '.jpg'
     png='.png'
 
