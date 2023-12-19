@@ -2,7 +2,7 @@ import cv2
 from utils import find_luminance_chrominance
 import numpy as np
 import matplotlib.pyplot as plt
-from blend import invert_mask, poisson_blend
+from blend import invert_mask, poisson_blend, blend_color_one_image
 from skimage import color
 from skimage.filters import gaussian
 
@@ -35,56 +35,6 @@ def combine_luma_chroma(luma_img, chroma_img):
 # plt.show()
 
 ################################################################################
-
-def blend_color_one_image(img, mask, original=None):
-    '''
-    Takes the image to blend
-    and an "inverted" mask, where shadowed pixels are positive, and non-shadowed
-    pixels are [0, 0, 0]. 
-    
-    Adjusts the shadowed pixels to match the color of the non-shadowed pixels
-    '''
-    # one_d_mask = mask[:, :, 0]
-    # bool_mask = np.full((mask.shape[0], mask.shape[1]), True)
-    # bool_mask[one_d_mask == 0] = False
-    bool_mask = np.full(mask.shape, True)
-    bool_mask[mask == 0] = False
-    img = color.rgb2lab(img / 255)
-    non_shadowed_part = np.ma.masked_array(img, mask=bool_mask)
-    shadowed_part = np.ma.masked_array(img, mask=~bool_mask)
-    shadow_l, shadow_a, shadow_b = align_three_channels(shadowed_part, non_shadowed_part)
-    new_lab_shadow = np.dstack((np.clip(shadow_l, 0, 100),
-                         np.clip(shadow_a, -100, 100),
-                         np.clip(shadow_b, -100, 100)))
-    combined = np.zeros(img.shape)
-    one_d_bool_mask = bool_mask[0, :, :]
-    combined = np.ma.array(new_lab_shadow.filled(1) * non_shadowed_part.filled(1))
-    combined = color.lab2rgb(new_lab_shadow) * 255
-    # plt.imshow(np.flip(combined.astype(np.uint8), axis=2))
-    # plt.show()
-    return combined.astype(np.uint8)
-    plt.imshow(np.flip(combined / 255, axis=2))
-    plt.show()
-    expanded_mask = gaussian(mask, sigma=0.3)
-    expanded_mask[expanded_mask < 1] = 0
-    plt.imshow(expanded_mask)
-    plt.show()
-    blended = poisson_blend(combined / 255, expanded_mask, original.astype(np.float32) / 255)
-    plt.imshow(np.flip(blended, axis=2))
-    plt.show()
-
-def align_channels(ch1, ch2):
-    '''
-    Aligns ch1 to be with ch2
-    '''
-    return ((ch1 - np.mean(ch1)) / np.std(ch1)) * np.std(ch2) + np.mean(ch2)
-
-def align_three_channels(im1, im2):
-    im1_x, im1_y, im1_z = im1[:, :, 0], im1[:, :, 1], im1[:, :, 2]
-    im2_x, im2_y, im2_z = im2[:, :, 0], im2[:, :, 1], im2[:, :, 2]
-    return align_channels(im1_x, im2_x), \
-        align_channels(im1_y, im2_y), \
-        align_channels(im1_z, im2_z)
 
 recolored = cv2.imread('../extra_post/2411/recolored.jpg')
 mask = invert_mask(cv2.imread('../extra_post/2411/mask.jpg'))

@@ -4,7 +4,7 @@ import matplotlib.pyplot as plt
 import sys
 from entropy import minimize_energy, N, R
 from utils import find_luminance_chrominance
-from blend import blend_gray, invert_mask
+from blend import blend_gray, invert_mask, blend_color_one_image
 
 EPSILON = 1e-6 
 
@@ -37,7 +37,7 @@ def main():
     omega_t = np.diag([90]*N)
     omega_p = np.array([[90.2, 0.0], [0.0, 90.2]])
     lambda_reg = 1.0 
-    num_iter = 50
+    num_iter = 10
 
     optimal_l, optimal_img = minimize_energy(image, mask_gray, initial_l, \
                                 phi_l=phi_l, phi_p=phi_p, \
@@ -72,9 +72,11 @@ def main():
     print(np.min(rechromed))
     plt.imshow(np.flip(rechromed, axis=2))
     plt.show()
-    cv2.imwrite(f'../results/{src_name}_color_{num_iter}_iters_R={R}.jpg', (rechromed * 255).astype(np.uint8))
-    # cv2.imshow("i", optimal_img)
-    # cv2.waitKey(0)
+    rechromed = (rechromed * 255).astype(np.uint8)
+    cv2.imwrite(f'../results/{src_name}_color_{num_iter}_iters_R={R}.jpg', rechromed)
+    recolor_space = blend_color_one_image(rechromed, inverted_mask)
+    cv2.imwrite(f'../results/{src_name}_blended_space_{num_iter}_iters_R={R}.jpg', recolor_space)
+
     print("--------------OPTIMAL--------------")
     print(f"optimal_l min: {np.min(np.exp(optimal_l))}")
     print(f"optimal_l max: {np.max(np.exp(optimal_l))}")
