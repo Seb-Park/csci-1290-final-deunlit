@@ -126,6 +126,7 @@ def invert_mask(mask, pad=False):
     return inverted
 
 def blend_gray(im, mask, original):
+    ### TODO: IS blending too many times.
     """
     Im must be between 0 and 1
     Mask must be between 0 and 1

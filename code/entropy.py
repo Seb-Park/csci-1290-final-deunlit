@@ -6,7 +6,7 @@ from scipy import sparse
 from tqdm import tqdm
 from skimage.filters import gaussian
 
-R = 1 # R=0 -> direct neighbor mode
+R = 0 # R=0 -> direct neighbor mode
 N = (2*R+1)**2 - 1 if R != 0 else 4
 EPSILON = 1e-6  # to avoid log 0
 
